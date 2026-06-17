@@ -1115,7 +1115,6 @@
 
     <nav class="tabs" id="main-tabs" aria-label="Secciones">
       <button class="tab-btn active" data-tab="home" data-short="Puntaje"><span class="tab-ico" aria-hidden="true">🏅</span><span class="tab-txt">Mi Puntaje</span></button>
-      <button class="tab-btn" data-tab="my" data-short="Partidos"><span class="tab-ico" aria-hidden="true">📅</span><span class="tab-txt">Partidos</span></button>
       <button class="tab-btn" data-tab="ranking" data-short="Ranking"><span class="tab-ico" aria-hidden="true">🏆</span><span class="tab-txt">Ranking</span></button>
       <button class="tab-btn" data-tab="stats" data-short="Stats"><span class="tab-ico" aria-hidden="true">📊</span><span class="tab-txt">Estadísticas</span></button>
       <button class="tab-btn" data-tab="results" data-short="Resultados"><span class="tab-ico" aria-hidden="true">⚽</span><span class="tab-txt">Resultados reales</span></button>
@@ -2581,10 +2580,16 @@ function renderHome() {
     var html = [];
     if (app.error) html.push(renderErrorCard());
     html.push(renderUpcomingStrip(detail, hfixtures));
-    html.push('<div class="card glow mi-puntaje-head"><div class="row space"><div><span class="pill">Mi puntaje</span><h2>' + esc(r ? r.name : '') + '</h2><p class="muted tiny" style="margin:.2rem 0 0">Tu posición y tus puntos en la Penca Chacal.</p></div><button class="ghost small" data-action="change-user">Cambiar usuario</button></div><div class="mi-puntaje-stats"><div class="mp-stat mp-stat-main"><strong>' + total + '</strong><span>puntos</span></div><div class="mp-stat"><strong>' + pos + '</strong><span>de ' + leaderboard.length + '</span></div><div class="mp-stat"><strong>' + detail.exact + '</strong><span>exactos</span></div><div class="mp-stat"><strong>' + (myIdx === 0 ? '🏆' : ('-' + gap)) + '</strong><span>' + (myIdx === 0 ? 'puntero' : 'al líder') + '</span></div></div></div>');
-    html.push(renderMyPointsCard(myEntry));
     html.push(renderNextMatchAllPredictions(hfixtures.filter(function (f) { return !f.done; })[0] || null));
-    html.push('<div class="card"><div class="mp-links"><button class="button-like" data-tab-jump="my">📅 Mis partidos</button><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
+    var homeSections = splitMatchdaySections(hfixtures);
+    var homeNext = homeSections.current.length ? homeSections.current[0] : (homeSections.upcoming.length ? homeSections.upcoming[0] : null);
+    var homeUpcoming = homeSections.upcoming.slice(0, 12);
+    if (homeNext || homeUpcoming.length) {
+        var heroHtml = homeNext ? renderNextMatchHero(homeNext, detail) : '';
+        var upcomingListHtml = homeUpcoming.length ? '<div class="partidos-list">' + homeUpcoming.map(function (f) { return renderPartidoRow(f, detail); }).join('') + '</div>' : '';
+        html.push('<details class="card" ' + detailAttrs('home', 'proximos-partidos', false) + '><summary><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div>' + (homeUpcoming.length ? '<span class="pill">' + homeUpcoming.length + '</span>' : '') + '</div></summary><div class="details-body">' + heroHtml + upcomingListHtml + '</div></details>');
+    }
+    html.push('<div class="card"><div class="mp-links"><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
     el.innerHTML = html.join('');
     updateV16StickyBodyClass();
 }
