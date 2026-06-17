@@ -1,0 +1,102 @@
+function renderStats() {
+    var el = document.getElementById('stats');
+    if (!el) return;
+    var data = app.data || {};
+    var predictions = getSubmittedPredictionsForView();
+    var players = getPlayersForView();
+    var actual = normalizeEntry(data.actual || {});
+    var count = Object.keys(predictions).length;
+    if (!count) {
+        el.innerHTML = '<div class="empty"><h2>Chacalómetro pendiente</h2><p>Las estadísticas aparecen cuando haya pronósticos enviados y revelados.</p></div>';
+        return;
+    }
+    var leaderboard = getLeaderboard(predictions, players, actual);
+    var nextScenarioHtml = renderNeedScenarios(predictions, players, actual);
+    var evolutionView = buildRankingEvolutionView(predictions, players, actual);
+    var activityHtml = renderActivityFeed(((data.activity || []).length ? data.activity : activityFromPlayers(players)));
+    var html = [];
+    html.push('<div class="v213-section-toolbar"><div><h2>Estadísticas</h2></div><span class="pill good">' + count + ' pronósticos</span></div>');
+    html.push(renderFunStats(predictions, players, actual, leaderboard, nextScenarioHtml));
+    html.push('<div class="stats-main-grid">' + renderRankingEvolution(evolutionView) + '</div><div class="stats-side-stack">' + renderLatestMovementsCard(evolutionView) + renderActivityPanel(activityHtml) + '</div>');
+    el.innerHTML = html.join('');
+}
+function playerNameById(players, id) {
+    var p = (players || []).find(function (x) { return String(x.playerId) === String(id); });
+    return p ? p.name : id;
+}
+function countMapAdd(map, value) {
+    value = String(value || '').trim();
+    if (!value) return;
+    map[value] = (map[value] || 0) + 1;
+}
+function topCount(map) {
+    var rows = Object.keys(map || {}).map(function (k) { return { label: k, count: map[k] }; }).sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); });
+    return rows[0] || null;
+}
+
+function countDrawHitsForEntry(entry, actual) {
+    entry = normalizeEntry(entry || {});
+    actual = normalizeEntry(actual || {});
+    var hits = 0;
+    GROUP_MATCHES.forEach(function (m) {
+        var p = (entry.groupScores || {})[m.id] || {}, a = (actual.groupScores || {})[m.id] || {};
+        if (scoreHasValue(p) && scoreHasValue(a) && resultOutcome(p) === 'D' && resultOutcome(a) === 'D') hits++;
+    });
+    if (allGroupMatchesComplete(actual)) {
+        var actualBracket = buildBracket(actual);
+        var predBracket = buildBracket(entry);
+        var predById = {};
+        predBracket.allMatches.forEach(function (m) { predById[m.id] = m; });
+        KO_ROUNDS.forEach(function (round) {
+            (actualBracket.rounds[round] || []).forEach(function (am) {
+                var pm = predById[am.id] || null;
+                if (!pm || !isSameMatchTeams(pm, am)) return;
+                var ps = (entry.knockoutScores || {})[am.id] || {};
+                var as = (actual.knockoutScores || {})[am.id] || {};
+                if (scoreHasValue(ps) && scoreHasValue(as) && resultOutcome(ps) === 'D' && resultOutcome(as) === 'D') hits++;
+            });
+        });
+    }
+    return hits;
+}
+function renderMetricCardClass(label, value, sub, cls) {
+    return '<div class="metric-card ' + esc(cls || '') + '"><span>' + esc(label) + '</span><strong>' + esc(value || '—') + '</strong><span>' + esc(sub || '') + '</span></div>';
+}
+function renderFunStats(predictions, players, actual, leaderboard, nextScenarioHtml) {
+    var championMap = {}, scorerMap = {}, bestMap = {}, keeperMap = {}, youngMap = {};
+    var movement = rankingMovementMap(predictions, players, actual);
+    var rows = Object.keys(predictions).map(function (id) {
+        var entry = normalizeEntry(predictions[id]);
+        var detail = scorePlayerDetail(entry, actual);
+        var goals = 0, filled = 0;
+        GROUP_MATCHES.forEach(function (m) {
+            var s = (entry.groupScores || {})[m.id] || {};
+            if (!scoreHasValue(s)) return;
+            goals += Number(s.homeGoals) + Number(s.awayGoals);
+            filled++;
+        });
+        countMapAdd(championMap, champion(entry));
+        countMapAdd(scorerMap, (entry.awards || {}).topScorer);
+        countMapAdd(bestMap, (entry.awards || {}).bestPlayer);
+        countMapAdd(keeperMap, (entry.awards || {}).bestKeeper);
+        countMapAdd(youngMap, (entry.awards || {}).youngPlayer);
+        var lb = (leaderboard.find(function (r) { return r.playerId === id; }) || {});
+        var move = movement[id] || { delta: 0 };
+        return { playerId: id, name: playerNameById(players, id), exact: detail.exact, outcome: detail.outcome, goals: goals, drawHits: countDrawHitsForEntry(entry, actual), filled: filled, total: lb.total || 0, rank: lb.playerId ? leaderboard.indexOf(lb) + 1 : 0, movementDelta: move.delta || 0 };
+    });
+    var mostExact = rows.slice().sort(function (a, b) { return b.exact - a.exact || b.total - a.total; })[0];
+    var mostOutcome = rows.slice().sort(function (a, b) { return b.outcome - a.outcome || b.total - a.total; })[0];
+    var mufaRow = leaderboard && leaderboard.length ? leaderboard[leaderboard.length - 1] : null;
+    var syndrome = rows.slice().filter(function (r) { return r.movementDelta < 0; }).sort(function (a, b) { return Math.abs(b.movementDelta) - Math.abs(a.movementDelta) || a.total - b.total || a.name.localeCompare(b.name); })[0];
+    var mostDrawHits = rows.slice().sort(function (a, b) { return b.drawHits - a.drawHits || b.total - a.total; })[0];
+    var champ = topCount(championMap);
+    var html = '<div class="insights-grid">';
+    html += renderMetricCard('🎯 El quirúrgico', mostExact ? mostExact.name : '—', mostExact ? mostExact.exact + ' exactos' : 'Sin datos');
+    html += renderMetricCard('🧭 El resultadista', mostOutcome ? mostOutcome.name : '—', mostOutcome ? mostOutcome.outcome + ' ganadores' : 'Sin datos');
+    html += renderMetricCardHtml('🏆 Campeón popular', champ ? teamHtml(champ.label) : '—', champ ? champ.count + ' votos' : 'Sin votos');
+    html += renderMetricCardClass('🧿 El Mufa', mufaRow ? mufaRow.name : '—', mufaRow ? 'Último de la tabla · #' + leaderboard.length + ' · ' + mufaRow.total + ' pts' : 'Sin datos', 'is-mufa');
+    html += renderMetricCardClass('📉 El Síndrome', syndrome ? syndrome.name : '—', syndrome ? 'Bajó ' + Math.abs(syndrome.movementDelta) + ' puesto(s) desde el último partido' : 'Sin bajas desde el último partido', 'is-sindrome');
+    html += renderMetricCardClass('🤝 El Cagón', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.name : '—', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.drawHits + ' empate(s) embocado(s)' : 'Sin empates embocados', 'is-cagon');
+    html += '</div><div class="stats-priority-grid"><div class="card"><span class="pill">Premios populares</span><h2>Lo más elegido</h2>' + renderPickList('Goleador', scorerMap) + renderPickList('Mejor jugador', bestMap) + renderPickList('Mejor arquero', keeperMap) + renderPickList('Joven', youngMap) + '</div>' + nextScenarioHtml + '</div>';
+    return html;
+}

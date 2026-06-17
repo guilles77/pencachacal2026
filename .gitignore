@@ -1,0 +1,18 @@
+# Vercel (link local del proyecto)
+.vercel
+
+# DATOS SENSIBLES — NUNCA subir (tiene ADMIN_PIN, mails y hashes de contraseñas)
+Penca Los Chacales Mundial 2026.xlsx
+*.xlsx
+
+# Artefactos de desarrollo / capturas
+.playwright-mcp/
+icons.json
+logo-lab.html
+/*.png
+
+# Dependencias
+node_modules/
+
+# Config local de Claude Code
+.claude/

@@ -1,0 +1,8 @@
+# Solo se publica la carpeta web/. Esto excluye lo de Google Apps Script y archivos de trabajo.
+/Code.gs
+/appsscript.json
+/index.html
+/logo-lab.html
+/icons.json
+/*.png
+.playwright-mcp
