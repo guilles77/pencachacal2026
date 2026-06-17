@@ -3092,7 +3092,7 @@ function renderResults() {
     var official = getConfig().OFFICIAL_RESULTS_URL || DEFAULT_CONFIG.OFFICIAL_RESULTS_URL;
     var hasAny = actualProgress.groupDone || actualProgress.koDone || actualProgress.awardsDone;
     var html = [];
-    html.push('<div class="card glow"><div class="row space"><div><span class="pill">Resultados reales</span><h2>Marcadores, tablas y premios</h2></div><a class="button-like ghost" href="' + esc(official) + '" target="_blank" rel="noopener">FIFA oficial</a></div><p class="muted">Misma lógica visual que “Mi pronóstico”: elegí una vista para revisar grupos, posiciones, mata-mata o premios cargados por el admin/sincronización.</p><p class="muted tiny">Cargados: ' + actualProgress.groupDone + '/72 partidos de grupo, ' + actualProgress.koDone + '/32 cruces mata-mata y ' + actualProgress.awardsDone + '/4 premios.</p></div>');
+    
     if (!hasAny) html.push('<div class="empty" style="margin-top:16px"><h2>Todavía no hay resultados reales cargados</h2><p>Cuando el admin cargue o sincronice partidos, esta pantalla se completa y el ranking se actualiza.</p></div>');
     html.push(renderEntryEditor(actual, 'results-view', true));
     el.innerHTML = html.join('');
