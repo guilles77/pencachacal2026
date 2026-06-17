@@ -1095,6 +1095,18 @@
     .rank-move-slot.down{color:var(--bad)}
     .rank-move-arrow{font-size:.95em}
     .rank-move-count{font-size:.92em}
+    .pred-match-list{display:grid;gap:8px;margin-top:4px}
+    .pred-match-row{padding:10px 12px;background:rgba(0,0,0,.22);border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
+    .pred-match-teams{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.94rem;flex-wrap:wrap}
+    .pred-vs{color:var(--muted2);font-size:.76rem;flex-shrink:0}
+    .pred-match-detail{display:flex;flex-wrap:wrap;align-items:center;gap:5px 10px;font-size:.83rem;color:var(--muted)}
+    .pred-match-detail strong{color:var(--text)}
+    .pred-group-block{margin-bottom:14px}
+    .pred-group-title{font-size:.72rem;font-weight:950;text-transform:uppercase;letter-spacing:.09em;color:var(--muted2);margin-bottom:7px;padding-left:2px}
+    .pred-award-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(0,0,0,.22);border-radius:14px;border:1px solid var(--line);flex-wrap:wrap}
+    .pred-award-name{font-weight:700;min-width:130px;font-size:.9rem}
+    .pred-rounds-wrap details.card{margin-top:10px}
+    .pred-rounds-wrap details.card:first-child{margin-top:0}
   </style>
 </head>
 <body>
@@ -2589,6 +2601,7 @@ function renderHome() {
         var upcomingListHtml = homeUpcoming.length ? '<div class="partidos-list">' + homeUpcoming.map(function (f) { return renderPartidoRow(f, detail); }).join('') + '</div>' : '';
         html.push('<details class="card" ' + detailAttrs('home', 'proximos-partidos', false) + '><summary><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div>' + (homeUpcoming.length ? '<span class="pill">' + homeUpcoming.length + '</span>' : '') + '</div></summary><div class="details-body">' + heroHtml + upcomingListHtml + '</div></details>');
     }
+    if (r) html.push(renderMyPredictionsSection(myEntry));
     html.push('<div class="card"><div class="mp-links"><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
     el.innerHTML = html.join('');
     updateV16StickyBodyClass();
@@ -4436,6 +4449,88 @@ function scorePlayerDetail(pred, actual) {
     var champPred = champion(pred), champActual = champion(actual);
     var championHit = !!(champPred && champActual && champPred === champActual);
     return { sourcePred: pred, exact: exact, outcome: outcome, miss: miss, groupPoints: groupPoints, groupRows: groupRows, groupRowMap: groupRowMap, koRows: koRows, koMatchRows: koMatchRows, koMatchRowMap: koMatchRowMap, koPoints: koTeamPoints + koMatchPoints, koTeamPoints: koTeamPoints, koMatchPoints: koMatchPoints, awardRows: awardRows, awards: awardRows.filter(function (r) { return r.status === 'exact'; }).map(function (r) { return r.label + ': ' + r.predicted; }), awardsPoints: awardPoints, champion: championHit, championPredicted: champPred, championActual: champActual };
+}
+function renderGroupPredRows(rows) {
+    return '<div class="pred-match-list">' + rows.map(function(r) {
+        var statusHtml = r.status !== 'pending' ? '<span class="' + matchScoreStatusClass(r.status) + '">' + matchScoreStatusLabel(r.status) + '</span>' : '<span class="pill">Pendiente</span>';
+        return '<div class="pred-match-row">'
+            + '<div class="pred-match-teams">' + teamHtml(r.home) + '<span class="pred-vs">vs</span>' + teamHtml(r.away) + '</div>'
+            + '<div class="pred-match-detail"><span>Tu pronóstico:</span><strong>' + esc(r.predScore) + '</strong>'
+            + (r.actualScore !== '—' ? '<span>· Real:</span><strong>' + esc(r.actualScore) + '</strong>' : '')
+            + statusHtml + '</div></div>';
+    }).join('') + '</div>';
+}
+function renderKoPredRows(rows) {
+    return '<div class="pred-match-list">' + rows.map(function(r) {
+        var statusHtml = r.status !== 'pending' ? '<span class="' + matchScoreStatusClass(r.status) + '">' + matchScoreStatusLabel(r.status) + '</span>' : '<span class="pill">Pendiente</span>';
+        return '<div class="pred-match-row">'
+            + '<div class="pred-match-teams">' + teamHtml(r.actualMatch.home) + '<span class="pred-vs">vs</span>' + teamHtml(r.actualMatch.away) + '</div>'
+            + '<div class="pred-match-detail">'
+            + (r.predScore !== '—' ? '<span>Tu resultado:</span><strong>' + esc(r.predScore) + '</strong>' : '')
+            + '<span>Tu ganador:</span>' + (r.predWinner ? teamHtml(r.predWinner) : '<em style="color:var(--muted2);font-style:normal">Sin elegir</em>')
+            + (r.actualScore !== '—' ? '<span>· Real:</span><strong>' + esc(r.actualScore) + '</strong>' : '')
+            + (r.actualWinner ? '<span>Ganó:</span>' + teamHtml(r.actualWinner) : '')
+            + statusHtml
+            + '</div></div>';
+    }).join('') + '</div>';
+}
+function renderKoPredRowsFromBracket(matches, pred) {
+    return '<div class="pred-match-list">' + matches.map(function(m) {
+        var pw = validWinner(pred, m);
+        var ps = scoreText((pred.knockoutScores || {})[m.id] || {});
+        return '<div class="pred-match-row">'
+            + '<div class="pred-match-teams">' + teamHtml(m.home) + '<span class="pred-vs">vs</span>' + teamHtml(m.away) + '</div>'
+            + '<div class="pred-match-detail">'
+            + (ps !== '—' ? '<span>Tu resultado:</span><strong>' + esc(ps) + '</strong>' : '')
+            + (pw ? '<span>Tu ganador:</span>' + teamHtml(pw) : '<span style="color:var(--muted2)">Sin ganador elegido</span>')
+            + '</div></div>';
+    }).join('') + '</div>';
+}
+function renderMyPredictionsSection(entry) {
+    var actual = normalizeEntry((app.data && app.data.actual) || {});
+    var pred = normalizeEntry(entry);
+    var detail = scorePlayerDetail(pred, actual);
+    var groupMap = {}, groupOrder = [];
+    detail.groupRows.forEach(function(r) {
+        if (!groupMap[r.group]) { groupMap[r.group] = []; groupOrder.push(r.group); }
+        groupMap[r.group].push(r);
+    });
+    var donePred = detail.groupRows.filter(function(r) { return r.predScore !== '—'; }).length;
+    var groupSections = groupOrder.map(function(g) {
+        return '<div class="pred-group-block"><div class="pred-group-title">' + esc(g) + '</div>' + renderGroupPredRows(groupMap[g]) + '</div>';
+    }).join('');
+    var groupsHtml = '<details class="card" ' + detailAttrs('my-pred', 'grupos', false) + '>'
+        + '<summary><div class="row space"><div><span class="pill">Fase de grupos</span></div><span class="muted tiny">' + donePred + '/' + detail.groupRows.length + ' completados</span></div></summary>'
+        + '<div class="details-body">' + groupSections + '</div></details>';
+    var koMatchRows = detail.koMatchRows;
+    var predBracket = buildBracket(pred);
+    var koSections = KO_ROUNDS.map(function(round) {
+        var label = ROUND_LABELS[round];
+        var inner;
+        if (koMatchRows.length) {
+            var rrows = koMatchRows.filter(function(r) { return r.round === round; });
+            inner = rrows.length ? renderKoPredRows(rrows) : '<p class="muted">Sin partidos en esta ronda.</p>';
+        } else {
+            var rmatches = predBracket.rounds[round] || [];
+            inner = rmatches.length ? renderKoPredRowsFromBracket(rmatches, pred) : '<p class="muted">Disponible cuando estén completas las tablas de grupos.</p>';
+        }
+        return '<details class="card" ' + detailAttrs('my-pred', round.toLowerCase(), false) + '>'
+            + '<summary><span class="pill">' + esc(label) + '</span></summary>'
+            + '<div class="details-body">' + inner + '</div></details>';
+    }).join('');
+    var awardItems = (detail.awardRows || []).map(function(r) {
+        var statusHtml = r.status !== 'pending' ? '<span class="' + matchScoreStatusClass(r.status) + '">' + matchScoreStatusLabel(r.status) + '</span>' : '<span class="pill">Pendiente</span>';
+        return '<div class="pred-award-row"><span class="pred-award-name">' + esc(r.label) + '</span>'
+            + '<strong>' + esc(r.predicted || '—') + '</strong>'
+            + (r.actual ? '<span class="muted tiny">Real: ' + esc(r.actual) + '</span>' : '')
+            + statusHtml + '</div>';
+    }).join('');
+    var awardsHtml = '<details class="card" ' + detailAttrs('my-pred', 'awards', false) + '>'
+        + '<summary><span class="pill">Premios individuales</span></summary>'
+        + '<div class="details-body">' + (awardItems || '<p class="muted">Sin pronósticos de premios.</p>') + '</div></details>';
+    return '<details class="card" ' + detailAttrs('home', 'mis-pronosticos', false) + '>'
+        + '<summary><div class="row space"><div><span class="pill">Mis pronósticos</span><h3 style="margin:.2rem 0 0">Todo lo que pronostiqué</h3></div></div></summary>'
+        + '<div class="details-body pred-rounds-wrap" style="padding:0 0 4px">' + groupsHtml + koSections + awardsHtml + '</div></details>';
 }
 function renderMyPointsCard(entry) {
     var actual = normalizeEntry((app.data && app.data.actual) || {});
