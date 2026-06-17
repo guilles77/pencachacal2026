@@ -3,8 +3,6 @@
 // Cachea en el CDN de Vercel para respetar el rate limit (10 req/min del plan free).
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  // Cache en el edge: 1 llamada real ~cada 2 min sin importar cuántos usuarios entren.
-  res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=600');
 
   const token = process.env.FOOTBALL_DATA_TOKEN || '';
   if (!token) {
@@ -20,24 +18,39 @@ module.exports = async (req, res) => {
       return;
     }
     const data = await r.json();
+    const LIVE_STATUSES = ['IN_PLAY', 'PAUSED'];
+    const INCLUDE_STATUSES = ['FINISHED', 'IN_PLAY', 'PAUSED'];
     const matches = (data.matches || [])
-      .filter(m => m && m.status === 'FINISHED')
-      .map(m => ({
-        stage: m.stage,
-        group: m.group,
-        utcDate: m.utcDate,
-        home: m.homeTeam && m.homeTeam.tla,
-        away: m.awayTeam && m.awayTeam.tla,
-        hg: m.score && m.score.fullTime ? m.score.fullTime.home : null,
-        ag: m.score && m.score.fullTime ? m.score.fullTime.away : null,
-        winner: m.score ? m.score.winner : null
-      }));
+      .filter(m => m && INCLUDE_STATUSES.includes(m.status))
+      .map(m => {
+        const live = LIVE_STATUSES.includes(m.status);
+        const ft = m.score && m.score.fullTime;
+        const ht = m.score && m.score.halfTime;
+        const scoreSource = (ft && ft.home != null) ? ft : ht;
+        return {
+          stage: m.stage,
+          group: m.group,
+          utcDate: m.utcDate,
+          home: m.homeTeam && m.homeTeam.tla,
+          away: m.awayTeam && m.awayTeam.tla,
+          hg: scoreSource ? scoreSource.home : null,
+          ag: scoreSource ? scoreSource.away : null,
+          winner: m.score ? m.score.winner : null,
+          status: live ? (m.status === 'PAUSED' ? 'halftime' : 'live') : 'finished'
+        };
+      });
+    const hasLive = matches.some(m => m.status === 'live' || m.status === 'halftime');
+    // Cache dinámico: 60s cuando hay partidos en vivo, 120s si no
+    res.setHeader('Cache-Control', hasLive
+      ? 's-maxage=60, stale-while-revalidate=120'
+      : 's-maxage=120, stale-while-revalidate=600');
     res.status(200).json({
       ok: true,
       updatedAt: new Date().toISOString(),
       season: (data.competition && data.competition.name) || 'FIFA World Cup',
       played: (data.resultSet && data.resultSet.played) || matches.length,
       count: matches.length,
+      hasLive,
       matches
     });
   } catch (e) {

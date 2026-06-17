@@ -1095,6 +1095,13 @@
     .rank-move-slot.down{color:var(--bad)}
     .rank-move-arrow{font-size:.95em}
     .rank-move-count{font-size:.92em}
+    .live-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,60,60,.18);color:#ff5c5c;border:1px solid rgba(255,60,60,.35);border-radius:20px;padding:2px 10px 2px 8px;font-size:.76rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+    .live-dot{width:8px;height:8px;border-radius:50%;background:#ff5c5c;animation:livePulse 1.4s ease-in-out infinite}
+    @keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+    .halftime-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,200,60,.15);color:#ffc83c;border:1px solid rgba(255,200,60,.3);border-radius:20px;padding:2px 10px;font-size:.76rem;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+    .live-score{color:#ff5c5c;font-weight:800}
+    .hstrip-card.is-live,.v20-match-card.is-live{border-color:rgba(255,60,60,.35)}
+    .provisional-tag{font-size:.72rem;color:var(--muted2);font-style:italic;margin-left:4px}
     .pred-match-list{display:grid;gap:8px;margin-top:4px}
     .pred-match-row{padding:10px 12px;background:rgba(0,0,0,.22);border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
     .pred-match-teams{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.94rem;flex-wrap:wrap}
@@ -1910,9 +1917,11 @@ function compareScheduledMatchLike(a, b) {
 function fixtureNoFromKoId(id) { return Number(String(id || '').replace('K', '')) || 0; }
 function homeScheduledFixtures(actual) {
     actual = normalizeEntry(actual || {});
+    var lf = app.liveFixtures || {};
     var fixtures = GROUP_MATCHES.map(function (m) {
         var score = (actual.groupScores || {})[m.id] || {};
-        return { type:'group', id:m.id, matchNo:m.matchNo, group:m.group, stage:'Grupo ' + m.group, home:m.home, away:m.away, date:scheduleDateForNo(m.matchNo), done:scoreHasValue(score), score:score };
+        var liveStatus = lf[m.id] || null;
+        return { type:'group', id:m.id, matchNo:m.matchNo, group:m.group, stage:'Grupo ' + m.group, home:m.home, away:m.away, date:scheduleDateForNo(m.matchNo), done:scoreHasValue(score) && !liveStatus, score:score, live:liveStatus };
     });
     if (allGroupMatchesComplete(actual)) {
         var bracket = buildBracket(actual);
@@ -2421,6 +2430,7 @@ function groupPairIndex() {
 }
 function normalizeOfficialMatches(matches) {
     var groupScores = {};
+    var liveIds = [];
     (matches || []).forEach(function (m) {
         if (m.stage !== 'GROUP_STAGE' || m.hg == null || m.ag == null) return;
         var home = tlaToTeam(m.home), away = tlaToTeam(m.away);
@@ -2431,24 +2441,43 @@ function normalizeOfficialMatches(matches) {
         var hg = m.hg, ag = m.ag;
         if (fx.home !== home) { var t = hg; hg = ag; ag = t; }
         groupScores[fx.id] = { homeGoals: hg, awayGoals: ag };
+        if (m.status === 'live' || m.status === 'halftime') {
+            liveIds.push({ id: fx.id, status: m.status });
+        }
     });
-    return { groupScores: groupScores };
+    return { groupScores: groupScores, liveIds: liveIds };
 }
-var _officialFetched = false;
+var _officialPollTimer = null;
+app.liveFixtures = {};  // { fixtureId: 'live'|'halftime' }
 function fetchOfficialResults() {
-    if (_officialFetched || !LC_STATIC) return;
-    _officialFetched = true;
+    if (!LC_STATIC) return;
     fetch('/api/results').then(function (r) { return r.ok ? r.json() : null; }).then(function (res) {
         if (!res || !res.ok || !res.matches) return;
-        var live = normalizeOfficialMatches(res.matches);
-        if (!live.groupScores || !Object.keys(live.groupScores).length) return;
-        var cur = normalizeEntry((app.data && app.data.actual) || {});
-        cur.groupScores = __assign(__assign({}, cur.groupScores), live.groupScores);
-        app.data.actual = cur;
-        app.adminActual = normalizeEntry(cur);
-        try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, updatedAt: res.updatedAt })); } catch (e) {}
+        var normalized = normalizeOfficialMatches(res.matches);
+        // Actualizar liveFixtures
+        var newLive = {};
+        (normalized.liveIds || []).forEach(function (l) { newLive[l.id] = l.status; });
+        app.liveFixtures = newLive;
+        if (normalized.groupScores && Object.keys(normalized.groupScores).length) {
+            var cur = normalizeEntry((app.data && app.data.actual) || {});
+            cur.groupScores = __assign(__assign({}, cur.groupScores), normalized.groupScores);
+            app.data.actual = cur;
+            app.adminActual = normalizeEntry(cur);
+            try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, updatedAt: res.updatedAt })); } catch (e) {}
+        }
         render();
-    }).catch(function () {});
+        // Polling: si hay partidos en vivo, re-fetch cada 60s
+        if (_officialPollTimer) { clearTimeout(_officialPollTimer); _officialPollTimer = null; }
+        if (res.hasLive) {
+            _officialPollTimer = setTimeout(fetchOfficialResults, 60000);
+        }
+    }).catch(function () {
+        // En caso de error, reintentar en 2 min si habia partidos en vivo
+        if (Object.keys(app.liveFixtures || {}).length) {
+            if (_officialPollTimer) clearTimeout(_officialPollTimer);
+            _officialPollTimer = setTimeout(fetchOfficialResults, 120000);
+        }
+    });
 }
 function renderPanelError(panelId, err) {
     var message = err && err.message ? err.message : String(err || 'Error desconocido');
@@ -2563,7 +2592,11 @@ function renderUpcomingStrip(myDetail, fixtures) {
     var cards = upcoming.map(function (f) {
         var row = detailRowForFixture(myDetail, f);
         var time = scheduleTimeForNo(f.matchNo);
-        return '<article class="hstrip-card"><div class="hstrip-meta">' + esc(f.stage || '') + '</div><div class="hstrip-when">' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</div><div class="hstrip-teams"><span class="hstrip-team">' + teamHtml(f.home) + '</span><span class="hstrip-vs">vs</span><span class="hstrip-team">' + teamHtml(f.away) + '</span></div><div class="hstrip-pred"><span>Tu pronóstico</span><strong>' + esc(fixturePredictionText(row)) + '</strong></div></article>';
+        var isLive = f.live === 'live' || f.live === 'halftime';
+        var liveTag = isLive ? livePillHtml(f.live) + ' ' : '';
+        var scoreClass = isLive ? ' live-score' : '';
+        var vsText = isLive && scoreHasValue(f.score || {}) ? fixtureScoreText(f) : 'vs';
+        return '<article class="hstrip-card' + (isLive ? ' is-live' : '') + '"><div class="hstrip-meta">' + liveTag + esc(f.stage || '') + '</div><div class="hstrip-when">' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</div><div class="hstrip-teams"><span class="hstrip-team">' + teamHtml(f.home) + '</span><span class="hstrip-vs' + scoreClass + '">' + esc(vsText) + '</span><span class="hstrip-team">' + teamHtml(f.away) + '</span></div><div class="hstrip-pred"><span>Tu pronóstico</span><strong>' + esc(fixturePredictionText(row)) + '</strong></div></article>';
     }).join('');
     return '<div class="card glow"><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div><span class="muted tiny">deslizá →</span></div><div class="hstrip">' + cards + '</div></div>';
 }
@@ -2830,18 +2863,25 @@ function renderMySecondaryTools(r, p, lock) {
     var receiptHtml = receipt ? '<div class="v205-receipt-line"><span>Comprobante</span><strong>' + esc(receipt) + '</strong>' + (r.submittedAt ? '<span class="muted tiny">' + esc(formatDate(r.submittedAt)) + '</span>' : '') + '</div>' : '';
     return '<details class="v205-secondary-tools"><summary>Cuenta y comprobante</summary><div class="details-body"><div class="v205-tools-grid"><div class="v205-tool-box"><h3>Usuario y clave</h3><p class="muted tiny">Usá esto solo si querés cambiar mail, clave o cerrar sesión en este dispositivo.</p>' + (need ? '<div class="auth-note"><strong>Clave temporal:</strong> guardá una clave propia de al menos 4 caracteres.</div>' : '') + '<form id="profile-auth-form"><label>Mail<input id="profile-email" type="email" value="' + esc(email) + '" placeholder="tu@mail.com" autocomplete="email"></label><label>Nueva clave<input id="profile-password" type="password" placeholder="Dejar vacío para no cambiar" autocomplete="new-password"></label><button type="submit">Guardar</button></form><div class="row" style="margin-top:10px"><button class="ghost" data-action="logout-player">Cambiar usuario</button></div></div><div class="v205-tool-box"><h3>Comprobante</h3>' + (receipt ? receiptHtml : '<p class="muted tiny">Tu comprobante aparece acá cuando enviás tu pronóstico.</p>') + '</div></div></div></details>';
 }
+function livePillHtml(status) {
+    if (status === 'halftime') return '<span class="halftime-pill">Entretiempo</span>';
+    if (status === 'live') return '<span class="live-pill"><span class="live-dot"></span>En vivo</span>';
+    return '';
+}
 function renderNextMatchHero(fixture, myDetail) {
     if (!fixture) return '<div class="card partidos-hero"><div class="partidos-hero-top"><span class="pill good">Al día</span></div><h3 style="margin:.4rem 0 0">No hay próximos partidos por jugar.</h3><p class="muted tiny">Cuando se carguen nuevos resultados aparece acá el siguiente.</p></div>';
     var row = detailRowForFixture(myDetail, fixture);
     var time = scheduleTimeForNo(fixture.matchNo);
-    var inPlay = isFixtureInPlayWindow(fixture);
+    var isLive = fixture.live === 'live' || fixture.live === 'halftime';
     var hasResult = scoreHasValue(fixture.score || {});
-    var statusPill = hasResult ? '<span class="pill good">Final</span>' : (inPlay ? '<span class="pill warn">En juego</span>' : '<span class="pill warn">Próximo</span>');
+    var statusPill = isLive ? livePillHtml(fixture.live) : (hasResult ? '<span class="pill good">Final</span>' : (isFixtureInPlayWindow(fixture) ? '<span class="pill warn">En juego</span>' : '<span class="pill warn">Próximo</span>'));
     var predText = fixturePredictionText(row);
-    var ptsHtml = hasResult && row ? '<span class="partidos-pts ' + matchScoreStatusClass(row.status) + '">' + (Number.isFinite(row.points) ? row.points : 0) + ' pts · ' + matchScoreStatusLabel(row.status) + '</span>' : '';
+    var scoreClass = isLive ? ' live-score' : '';
+    var provisionalTag = isLive && hasResult && row ? '<span class="provisional-tag">(provisional)</span>' : '';
+    var ptsHtml = hasResult && row ? '<span class="partidos-pts ' + matchScoreStatusClass(row.status) + '">' + (Number.isFinite(row.points) ? row.points : 0) + ' pts · ' + matchScoreStatusLabel(row.status) + provisionalTag + '</span>' : '';
     return '<article class="card partidos-hero">'
         + '<div class="partidos-hero-top"><span class="pill">' + esc(fixture.stage || '') + ' · Partido ' + esc(fixture.matchNo || '') + '</span>' + statusPill + '</div>'
-        + '<div class="partidos-hero-teams"><div class="partidos-team">' + teamHtml(fixture.home) + '</div><div class="partidos-vs">' + esc(fixtureScoreText(fixture)) + '</div><div class="partidos-team">' + teamHtml(fixture.away) + '</div></div>'
+        + '<div class="partidos-hero-teams"><div class="partidos-team">' + teamHtml(fixture.home) + '</div><div class="partidos-vs' + scoreClass + '">' + esc(fixtureScoreText(fixture)) + '</div><div class="partidos-team">' + teamHtml(fixture.away) + '</div></div>'
         + '<div class="partidos-hero-when">📅 ' + esc(formatDateKey(fixture.date)) + (time ? ' · ' + esc(time) + ' hs' : '') + '</div>'
         + '<div class="partidos-hero-pred"><span>Tu pronóstico</span><strong>' + esc(predText) + '</strong>' + ptsHtml + '</div>'
         + '</article>';
@@ -2849,12 +2889,16 @@ function renderNextMatchHero(fixture, myDetail) {
 function renderPartidoRow(fixture, myDetail) {
     var row = detailRowForFixture(myDetail, fixture);
     var time = scheduleTimeForNo(fixture.matchNo);
+    var isLive = fixture.live === 'live' || fixture.live === 'halftime';
     var hasResult = scoreHasValue(fixture.score || {});
     var predText = fixturePredictionText(row);
-    var ptsHtml = hasResult && row ? '<span class="partidos-pts ' + matchScoreStatusClass(row.status) + '">' + (Number.isFinite(row.points) ? row.points : 0) + ' pts</span>' : '';
-    return '<article class="v20-match-card partidos-row ' + (hasResult ? 'is-done' : 'is-pending') + '">'
-        + '<div class="v20-match-meta"><span>' + esc(fixture.stage || '') + '</span><span>' + esc(formatDateKey(fixture.date)) + (time ? ' · ' + esc(time) : '') + '</span></div>'
-        + '<div class="v20-teams"><div class="v20-team home">' + teamHtml(fixture.home) + '</div><div class="v20-score">' + esc(fixtureScoreText(fixture)) + '</div><div class="v20-team away">' + teamHtml(fixture.away) + '</div></div>'
+    var provisionalTag = isLive && hasResult && row ? '<span class="provisional-tag">(prov.)</span>' : '';
+    var ptsHtml = hasResult && row ? '<span class="partidos-pts ' + matchScoreStatusClass(row.status) + '">' + (Number.isFinite(row.points) ? row.points : 0) + ' pts' + provisionalTag + '</span>' : '';
+    var liveHtml = isLive ? ' ' + livePillHtml(fixture.live) : '';
+    var scoreClass = isLive ? ' live-score' : '';
+    return '<article class="v20-match-card partidos-row ' + (isLive ? 'is-live' : (hasResult ? 'is-done' : 'is-pending')) + '">'
+        + '<div class="v20-match-meta"><span>' + esc(fixture.stage || '') + liveHtml + '</span><span>' + esc(formatDateKey(fixture.date)) + (time ? ' · ' + esc(time) : '') + '</span></div>'
+        + '<div class="v20-teams"><div class="v20-team home">' + teamHtml(fixture.home) + '</div><div class="v20-score' + scoreClass + '">' + esc(fixtureScoreText(fixture)) + '</div><div class="v20-team away">' + teamHtml(fixture.away) + '</div></div>'
         + '<div class="partidos-row-pred"><span>Tu pronóstico:</span><strong>' + esc(predText) + '</strong>' + ptsHtml + '</div>'
         + '</article>';
 }
