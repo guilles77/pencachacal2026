@@ -4371,17 +4371,24 @@ function scorePlayer(pred, actual) {
         var keyByRound = { R32: 'r32', R16: 'r16', QF: 'qf', SF: 'sf', THIRD: 'third', FINAL: 'final' };
         KO_ROUNDS.forEach(function (round) {
             var key = keyByRound[round];
+            var predRoundMatches = (predBracket.rounds[round] || []).slice();
+            var usedPredIds = {};
             (actualBracket.rounds[round] || []).forEach(function (am) {
-                var pm = predById[am.id] || am;
                 var as = (actual.knockoutScores || {})[am.id] || {};
-                var ps = (pred.knockoutScores || {})[am.id] || {};
                 var aw = validWinner(actual, am);
+                var pm = null;
+                for (var pi = 0; pi < predRoundMatches.length; pi++) {
+                    if (!usedPredIds[predRoundMatches[pi].id] && isSameMatchTeams(predRoundMatches[pi], am)) {
+                        pm = predRoundMatches[pi]; usedPredIds[pm.id] = true; break;
+                    }
+                }
+                if (!pm) return;
+                var ps = (pred.knockoutScores || {})[pm.id] || {};
                 var pw = validWinner(pred, pm);
-                var sameTeams = isSameMatchTeams(pm, am);
-                if (sameTeams && scoreHasValue(as) && scoreHasValue(ps)) {
+                if (scoreHasValue(as) && scoreHasValue(ps)) {
                     if (Number(ps.homeGoals) === Number(as.homeGoals) && Number(ps.awayGoals) === Number(as.awayGoals)) breakdown[key] += pts.exact;
                     else if (pw && aw && pw === aw) breakdown[key] += pts.outcome;
-                } else if (sameTeams && pw && aw && pw === aw) {
+                } else if (pw && aw && pw === aw) {
                     breakdown[key] += pts.outcome;
                 }
             });
@@ -4609,13 +4616,21 @@ function buildKoMatchAuditRows(pred, actual) {
     predBracket.allMatches.forEach(function (m) { predById[m.id] = m; });
     var rows = [];
     KO_ROUNDS.forEach(function (round) {
+        var predRoundMatches = (predBracket.rounds[round] || []).slice();
+        var usedPredIds = {};
         (actualBracket.rounds[round] || []).forEach(function (m) {
             var aw = validWinner(actual, m);
             var as = (actual.knockoutScores || {})[m.id] || {};
-            var pm = predById[m.id] || m;
+            var pm = null;
+            for (var pi = 0; pi < predRoundMatches.length; pi++) {
+                if (!usedPredIds[predRoundMatches[pi].id] && isSameMatchTeams(predRoundMatches[pi], m)) {
+                    pm = predRoundMatches[pi]; usedPredIds[pm.id] = true; break;
+                }
+            }
+            var sameTeams = !!pm;
+            if (!pm) pm = predById[m.id] || m;
             var pw = validWinner(pred, pm);
-            var ps = (pred.knockoutScores || {})[m.id] || {};
-            var sameTeams = isSameMatchTeams(pm, m);
+            var ps = (pred.knockoutScores || {})[pm.id] || {};
             var status = 'pending';
             var point = 0;
             if (aw && scoreHasValue(as)) {
