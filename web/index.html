@@ -1892,6 +1892,14 @@ function kickoffDateForNo(no) {
     var raw = MATCH_KICKOFF_ISO[Number(no)] || '';
     return raw ? new Date(raw) : null;
 }
+// Un partido no puede seguir "en vivo" mas de 2,5 h despues del inicio. La API (football-data)
+// a veces tarda en marcarlo finalizado y el CDN sirve respuestas viejas; este tope lo corrige.
+var MAX_LIVE_MS = 2.5 * 60 * 60 * 1000;
+function withinLiveWindow(kickoff) {
+    if (!kickoff) return true;
+    var t = (kickoff instanceof Date) ? kickoff.getTime() : new Date(kickoff).getTime();
+    return isNaN(t) ? true : (Date.now() - t) < MAX_LIVE_MS;
+}
 function formatKickoffPartsForNo(no) {
     var d = kickoffDateForNo(no);
     if (!d || isNaN(d.getTime())) return null;
@@ -1926,7 +1934,7 @@ function homeScheduledFixtures(actual) {
     var lf = app.liveFixtures || {};
     var fixtures = GROUP_MATCHES.map(function (m) {
         var score = (actual.groupScores || {})[m.id] || {};
-        var liveStatus = lf[m.id] || null;
+        var liveStatus = (lf[m.id] && withinLiveWindow(kickoffDateForNo(m.matchNo))) ? lf[m.id] : null;
         return { type:'group', id:m.id, matchNo:m.matchNo, group:m.group, stage:'Grupo ' + m.group, home:m.home, away:m.away, date:scheduleDateForNo(m.matchNo), done:scoreHasValue(score) && !liveStatus, score:score, live:liveStatus };
     });
     if (allGroupMatchesComplete(actual)) {
@@ -2303,6 +2311,7 @@ function init() {
                     });
                     window.addEventListener('unhandledrejection', function (event) { var reason = event.reason || {}; app.error = new Error(reason.message || String(reason)); render(); });
                     var _refreshBtn = document.getElementById('refresh-btn'); if (_refreshBtn) _refreshBtn.addEventListener('click', function () { return refresh(); });
+                    document.addEventListener('visibilitychange', function () { if (!document.hidden && LC_STATIC) fetchOfficialResults(); });
                     if (isAdminRequested()) app.activeTab = 'admin';
                     return [4 /*yield*/, refresh()];
                 case 1:
@@ -2447,7 +2456,7 @@ function normalizeOfficialMatches(matches) {
         var hg = m.hg, ag = m.ag;
         if (fx.home !== home) { var t = hg; hg = ag; ag = t; }
         groupScores[fx.id] = { homeGoals: hg, awayGoals: ag };
-        if (m.status === 'live' || m.status === 'halftime') {
+        if ((m.status === 'live' || m.status === 'halftime') && withinLiveWindow(m.utcDate)) {
             liveIds.push({ id: fx.id, status: m.status });
         }
     });
@@ -2457,6 +2466,7 @@ var _officialPollTimer = null;
 app.liveFixtures = {};  // { fixtureId: 'live'|'halftime' }
 function fetchOfficialResults() {
     if (!LC_STATIC) return;
+    if (_officialPollTimer) { clearTimeout(_officialPollTimer); _officialPollTimer = null; }
     fetch('/api/results').then(function (r) { return r.ok ? r.json() : null; }).then(function (res) {
         if (!res || !res.ok || !res.matches) return;
         var normalized = normalizeOfficialMatches(res.matches);
