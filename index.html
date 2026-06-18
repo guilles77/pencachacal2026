@@ -2466,10 +2466,17 @@ function fetchOfficialResults() {
             try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, updatedAt: res.updatedAt })); } catch (e) {}
         }
         render();
-        // Polling: si hay partidos en vivo, re-fetch cada 60s
+        // Polling: si hay partidos en vivo, re-fetch cada 60s; si no, un poll extra en 3 min para limpiar pills colgadas
         if (_officialPollTimer) { clearTimeout(_officialPollTimer); _officialPollTimer = null; }
         if (res.hasLive) {
             _officialPollTimer = setTimeout(fetchOfficialResults, 60000);
+        } else if (Object.keys(app.liveFixtures).length) {
+            // Habia partidos en vivo pero la API ya no los reporta: limpiar
+            app.liveFixtures = {};
+            render();
+        } else {
+            // Sin partidos en vivo: un re-check en 3 min por si empieza uno nuevo
+            _officialPollTimer = setTimeout(fetchOfficialResults, 180000);
         }
     }).catch(function () {
         // En caso de error, reintentar en 2 min si habia partidos en vivo
