@@ -1,5 +1,5 @@
 /* Penca Chacal · service worker (Vercel) */
-const CACHE = 'penca-chacal-v21';
+const CACHE = 'penca-chacal-v22';
 const SHELL = [
   '/',
   '/index.html',
@@ -33,15 +33,19 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;  // no tocar pedidos cross-origin (backend, banderas, etc.)
   if (url.pathname.startsWith('/api/')) return;      // nunca cachear la API
 
-  if (req.mode === 'navigate') {
-    // Network-first para el HTML, así siempre toma la última versión; offline cae al cache.
+  // Network-first para HTML y data.js (siempre tomar la última versión; offline cae al cache)
+  if (req.mode === 'navigate' || url.pathname === '/data.js') {
     event.respondWith(
-      fetch(req).catch(() => caches.match('/index.html').then((r) => r || caches.match('/')))
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(req, copy));
+        return res;
+      }).catch(() => caches.match(req.mode === 'navigate' ? '/index.html' : req).then((r) => r || caches.match('/')))
     );
     return;
   }
 
-  // Cache-first para estáticos (íconos, etc.).
+  // Cache-first para estáticos (íconos, manifest, etc.).
   event.respondWith(
     caches.match(req).then((cached) => cached || fetch(req).then((res) => {
       const copy = res.clone();
