@@ -2121,7 +2121,7 @@ var app = {
     diagnostic: null,
     predictionView: localStorage.getItem('chacales_prediction_view') || 'groups',
     resultsView: localStorage.getItem('chacales_results_view') || 'matches',
-    uiState: { details: {}, v16ValidationOpen: false, rankingExpanded: false, homeFixtureKey: '' }
+    uiState: { details: {}, v16ValidationOpen: false, rankingExpanded: false, homeFixtureKey: '', homeFixtureUserSelected: false, homeStripScrollLeft: 0 }
 };
 var DEFAULT_CONFIG = {
     PREDICTION_DEADLINE: '2026-06-12T00:00:00-03:00',
@@ -2616,17 +2616,33 @@ function fixtureByKey(fixtures, key) {
     key = String(key || '');
     return (fixtures || []).find(function (f) { return fixtureKey(f) === key; }) || null;
 }
+function isHomeFixtureActive(fixture) {
+    if (!fixture) return false;
+    if (fixture.live === 'live' || fixture.live === 'halftime') return true;
+    var kickoff = kickoffMillisForFixture(fixture);
+    if (!Number.isFinite(kickoff)) return false;
+    var now = Date.now();
+    return kickoff <= now + (15 * 60 * 1000) && now - kickoff < MAX_LIVE_MS;
+}
+function selectableHomeFixtures(fixtures) {
+    return (fixtures || []).filter(function (f) { return !f.done || isHomeFixtureActive(f); });
+}
+function preferredHomeFixture(fixtures) {
+    var selectable = selectableHomeFixtures(fixtures);
+    return selectable.find(isHomeFixtureActive) || selectable[0] || null;
+}
 function selectedHomeFixture(fixtures) {
-    var pending = (fixtures || []).filter(function (f) { return !f.done; });
-    var selected = fixtureByKey(pending, app.uiState.homeFixtureKey);
+    var selectable = selectableHomeFixtures(fixtures);
+    var selected = app.uiState.homeFixtureUserSelected ? fixtureByKey(selectable, app.uiState.homeFixtureKey) : null;
     if (!selected) {
-        selected = pending[0] || null;
+        if (app.uiState.homeFixtureUserSelected) app.uiState.homeFixtureUserSelected = false;
+        selected = preferredHomeFixture(selectable);
         app.uiState.homeFixtureKey = selected ? fixtureKey(selected) : '';
     }
     return selected;
 }
 function renderUpcomingStrip(myDetail, fixtures, selectedFixture) {
-    var upcoming = (fixtures || []).filter(function (f) { return !f.done; }).slice(0, 14);
+    var upcoming = selectableHomeFixtures(fixtures).slice(0, 14);
     if (!upcoming.length) return '';
     var selectedKey = fixtureKey(selectedFixture);
     var cards = upcoming.map(function (f) {
@@ -3107,15 +3123,13 @@ function renderRanking() {
     var actual = normalizeEntry(data.actual || {});
     var leaderboard = getLeaderboard(predictions, playersForView, actual);
     var moveMap = rankingMovementMap(predictions, playersForView, actual);
-    var actualProgress = predictionProgress(actual);
     var selId = (app.uiState && app.uiState.rankingPlayer) || '';
     if (!leaderboard.some(function (row) { return row.playerId === selId; })) {
         var req = requester();
         selId = (req && leaderboard.some(function (row) { return row.playerId === req.playerId; })) ? req.playerId : (leaderboard[0] ? leaderboard[0].playerId : '');
     }
     var html = [];
-    html.push('<div class="card glow"><div class="row space"><div><span class="pill">Ranking</span><h2>Tabla de Los Chacales</h2></div><button class="ghost" data-ranking-toggle="1">' + (app.uiState.rankingExpanded ? 'Ocultar detalle' : 'Expandir detalle') + '</button></div><p class="muted">Tocá un jugador para ver sus pronósticos: los jugados con el resultado real y los puntos que sumó, y también los que se vienen.</p><p class="muted tiny">Resultados reales cargados: ' + actualProgress.done + '/' + actualProgress.total + ' campos clave.</p></div>');
-    html.push('<div class="card score-table-wrap" style="margin-top:16px">' + (leaderboard.length ? renderLeaderboardTable(leaderboard, moveMap) : '<div class="empty">El ranking aparece cuando haya pronósticos enviados y revelados.</div>') + '</div>');
+    html.push('<div class="card score-table-wrap"><div class="row space" style="margin-bottom:12px"><span class="pill">Ranking</span><button class="ghost" data-ranking-toggle="1">' + (app.uiState.rankingExpanded ? 'Ocultar detalle' : 'Expandir detalle') + '</button></div>' + (leaderboard.length ? renderLeaderboardTable(leaderboard, moveMap) : '<div class="empty">El ranking aparece cuando haya pronósticos enviados y revelados.</div>') + '</div>');
     if (leaderboard.length && selId) html.push(renderRankingPlayerDetail(selId, predictions, playersForView, actual, leaderboard));
     el.innerHTML = html.join('');
 }
@@ -3216,7 +3230,7 @@ function playerLogoutAction() {
 function renderRules() {
     var el = document.getElementById('rules');
     var pts = points();
-    el.innerHTML = '<div class="card glow"><span class="pill">Reglas</span><h2>Reglamento de puntos</h2><p class="muted">La lógica queda igual para todo el torneo: resultado exacto vale 3, ganador correcto vale 1 y además se suman aciertos por avance de fase.</p></div><div class="grid two" style="margin-top:16px"><div class="card"><h2>Resultados de partidos</h2><ul class="rules-list"><li><strong>' + pts.exact + ' pts</strong> por resultado exacto en cualquier partido de cualquier fase.</li><li><strong>' + pts.outcome + ' pt</strong> por acertar ganador correcto en cualquier partido de cualquier fase.</li><li>En mata-mata, si el marcador es empate, el ganador correcto se toma del equipo clasificado/ganador por penales.</li></ul></div><div class="card"><h2>Clasificados por fase</h2><ul class="rules-list"><li><strong>' + pts.R32 + ' pt</strong> por cada equipo que clasifique a 16avos.</li><li><strong>' + pts.R16 + ' pts</strong> por cada equipo que clasifique a 8avos.</li><li><strong>' + pts.QF + ' pts</strong> por cada equipo que clasifique a 4tos.</li><li><strong>' + pts.SF + ' pts</strong> por cada equipo que clasifique a semis.</li><li><strong>' + pts.THIRD + ' pts</strong> por cada equipo que clasifique al partido de 3er y 4to puesto.</li><li><strong>' + pts.FINAL + ' pts</strong> por cada equipo que clasifique a la final.</li></ul></div><div class="card"><h2>Campeón y premios</h2><ul class="rules-list"><li><strong>' + pts.CHAMPION + ' pts</strong> por acertar campeón.</li><li><strong>' + pts.awards + ' pts</strong> por cada premio individual acertado.</li></ul></div><div class="card"><h2>Cierre y privacidad</h2><p class="muted">Antes del cierre, cada usuario ve solo su propio pronóstico. Al llegar la fecha límite, se envía automáticamente el último borrador guardado con contenido; lo que quedó sin completar simplemente no suma puntos.</p></div></div>';
+    el.innerHTML = '<div class="grid two"><div class="card"><h2>Resultados de partidos</h2><ul class="rules-list"><li><strong>' + pts.exact + ' pts</strong> por resultado exacto en cualquier partido de cualquier fase.</li><li><strong>' + pts.outcome + ' pt</strong> por acertar ganador correcto en cualquier partido de cualquier fase.</li><li>En mata-mata, si el marcador es empate, el ganador correcto se toma del equipo clasificado/ganador por penales.</li></ul></div><div class="card"><h2>Clasificados por fase</h2><ul class="rules-list"><li><strong>' + pts.R32 + ' pt</strong> por cada equipo que clasifique a 16avos.</li><li><strong>' + pts.R16 + ' pts</strong> por cada equipo que clasifique a 8avos.</li><li><strong>' + pts.QF + ' pts</strong> por cada equipo que clasifique a 4tos.</li><li><strong>' + pts.SF + ' pts</strong> por cada equipo que clasifique a semis.</li><li><strong>' + pts.THIRD + ' pts</strong> por cada equipo que clasifique al partido de 3er y 4to puesto.</li><li><strong>' + pts.FINAL + ' pts</strong> por cada equipo que clasifique a la final.</li></ul></div><div class="card"><h2>Campeón y premios</h2><ul class="rules-list"><li><strong>' + pts.CHAMPION + ' pts</strong> por acertar campeón.</li><li><strong>' + pts.awards + ' pts</strong> por cada premio individual acertado.</li></ul></div><div class="card"><h2>Cierre y privacidad</h2><p class="muted">Antes del cierre, cada usuario ve solo su propio pronóstico. Al llegar la fecha límite, se envía automáticamente el último borrador guardado con contenido; lo que quedó sin completar simplemente no suma puntos.</p></div></div>';
 }
 function renderEntryEditor(entry, scope, lockedFlag) {
     entry = normalizeEntry(entry);
@@ -3573,12 +3587,15 @@ function handleKeyDown(event) {
     selectHomeFixture(homeFixturePick);
 }
 function selectHomeFixture(el) {
+    var strip = el && el.closest ? el.closest('.hstrip') : null;
+    app.uiState.homeStripScrollLeft = strip ? strip.scrollLeft : (app.uiState.homeStripScrollLeft || 0);
     app.uiState.homeFixtureKey = el.dataset.homeFixture || '';
+    app.uiState.homeFixtureUserSelected = true;
     render();
     setTimeout(function () {
-        var d = document.getElementById('home-allpred');
-        if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 40);
+        var restored = document.querySelector('#home .hstrip');
+        if (restored) restored.scrollLeft = app.uiState.homeStripScrollLeft || 0;
+    }, 0);
 }
 function handleSubmit(event) {
     event.preventDefault();
@@ -4730,12 +4747,11 @@ function renderStats() {
         return;
     }
     var leaderboard = getLeaderboard(predictions, players, actual);
-    var nextScenarioHtml = renderNeedScenarios(predictions, players, actual);
     var evolutionView = buildRankingEvolutionView(predictions, players, actual);
     var activityHtml = renderActivityFeed(((data.activity || []).length ? data.activity : activityFromPlayers(players)));
     var html = [];
     html.push('<div class="v213-section-toolbar"><div><span class="pill">Chacalómetro</span><h2>Estadísticas</h2></div><span class="pill good">' + count + ' pronósticos</span></div>');
-    html.push(renderFunStats(predictions, players, actual, leaderboard, nextScenarioHtml));
+    html.push(renderFunStats(predictions, players, actual, leaderboard));
     html.push('<div class="stats-main-grid">' + renderRankingEvolution(evolutionView) + '</div><div class="stats-side-stack">' + renderTopMomentCard(leaderboard) + renderLatestMovementsCard(evolutionView) + renderActivityPanel(activityHtml) + '</div>');
     el.innerHTML = html.join('');
 }
@@ -4762,7 +4778,7 @@ function pointsForFixtures(entry, actual, fixtures) {
         return sum + (row && Number.isFinite(row.points) ? row.points : 0);
     }, 0);
 }
-function renderFunStats(predictions, players, actual, leaderboard, nextScenarioHtml) {
+function renderFunStats(predictions, players, actual, leaderboard) {
     var championMap = {}, scorerMap = {}, bestMap = {}, keeperMap = {}, youngMap = {};
     var movement = rankingMovementMap(predictions, players, actual);
     var recentFixtures = recentScoredFixtures(actual, 4);
@@ -4798,7 +4814,7 @@ function renderFunStats(predictions, players, actual, leaderboard, nextScenarioH
     html += renderMetricCardClass('🧿 El Mufa', mufaRow ? mufaRow.name : '—', mufaRow ? mufaRow.miss + ' fallo(s)' : 'Sin datos', 'is-mufa');
     html += renderMetricCardClass('📉 El Síndrome', syndrome ? syndrome.name : '—', syndrome ? syndrome.recent4Points + ' pts en últimos ' + recentFixtures.length + ' partido(s)' : 'Sin partidos recientes', 'is-sindrome');
     html += renderMetricCardClass('🤝 El Cagón', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.name : '—', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.drawHits + ' empate(s) embocado(s)' : 'Sin empates embocados', 'is-cagon');
-    html += '</div><div class="stats-priority-grid"><div class="card"><span class="pill">Premios populares</span><h2>Lo más elegido</h2>' + renderPickList('Goleador', scorerMap) + renderPickList('Mejor jugador', bestMap) + renderPickList('Mejor arquero', keeperMap) + renderPickList('Joven', youngMap) + '</div>' + nextScenarioHtml + '</div>';
+    html += '</div><div class="stats-priority-grid"><div class="card"><span class="pill">Premios populares</span><h2>Lo más elegido</h2>' + renderPickList('Goleador', scorerMap) + renderPickList('Mejor jugador', bestMap) + renderPickList('Mejor arquero', keeperMap) + renderPickList('Joven', youngMap) + '</div></div>';
     return html;
 }
 function countDrawHitsForEntry(entry, actual) {
@@ -4872,83 +4888,6 @@ function renderPickList(title, map) {
 function renderPodiumList(rows) {
     if (!rows || !rows.length) return '<div class="empty">Sin ranking todavía.</div>';
     return '<div class="podium-list">' + rows.map(function (r, i) { return '<div class="podium-row"><span>' + (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1)) + '</span><strong>' + esc(r.name) + '</strong><span class="pill good">' + r.total + ' pts</span></div>'; }).join('') + '</div>';
-}
-function cloneEntry(entry) {
-    return JSON.parse(JSON.stringify(normalizeEntry(entry)));
-}
-function nextPendingThing(actual) {
-    actual = normalizeEntry(actual);
-    var nextFixture = homeScheduledFixtures(actual).find(function (f) { return !f.done && isConcreteTeam(f.home) && isConcreteTeam(f.away); });
-    if (!nextFixture) return null;
-    if (nextFixture.type === 'group') {
-        var groupMatch = GROUP_MATCHES.find(function (m) { return m.id === nextFixture.id; });
-        return groupMatch ? { type: 'group', match: groupMatch } : null;
-    }
-    var bracket = buildBracket(actual);
-    var round = nextFixture.round || '';
-    var match = ((bracket.rounds[round] || []).find(function (m) { return m.id === nextFixture.id; })) || (bracket.allMatches || []).find(function (m) { return m.id === nextFixture.id; });
-    return match ? { type: 'knockout', round: round, match: match } : null;
-}
-function renderNeedScenarios(predictions, players, actual) {
-    var next = nextPendingThing(actual);
-    if (!next) return '<div class="card"><span class="pill">Qué necesita cada uno</span><h2>Sin escenarios pendientes</h2><p class="muted">Cuando haya un partido real pendiente, acá se simula el impacto en el ranking.</p></div>';
-    if (next.type === 'group') return renderGroupNeedScenarios(predictions, players, actual, next.match);
-    return renderKnockoutNeedScenarios(predictions, players, actual, next.match, next.round);
-}
-function renderGroupNeedScenarios(predictions, players, actual, m) {
-    var baseline = cloneEntry(actual);
-    if (baseline.groupScores) delete baseline.groupScores[m.id];
-    var scenarios = [
-        { label: teamLabel(m.home) + ' gana', homeGoals: 1, awayGoals: 0 },
-        { label: 'Empate', homeGoals: 1, awayGoals: 1 },
-        { label: teamLabel(m.away) + ' gana', homeGoals: 0, awayGoals: 1 }
-    ];
-    return '<div class="card"><span class="pill">Qué necesita cada uno</span><h2>Próximo partido: ' + teamHtml(m.home) + ' vs ' + teamHtml(m.away) + '</h2><p class="muted tiny">Simulación por ganador con marcadores de referencia. Los puntos exactos pueden cambiar si el marcador real es otro.</p><div class="scenario-grid">' + scenarios.map(function (sc) {
-        var sim = cloneEntry(actual);
-        sim.groupScores[m.id] = { homeGoals: sc.homeGoals, awayGoals: sc.awayGoals };
-        var exacts = Object.keys(predictions).filter(function (id) { var p = (normalizeEntry(predictions[id]).groupScores || {})[m.id] || {}; return scoreHasValue(p) && Number(p.homeGoals) === sc.homeGoals && Number(p.awayGoals) === sc.awayGoals; }).map(function (id) { return playerNameById(players, id); });
-        return renderScenarioCard(sc.label, predictions, players, baseline, sim, exacts, { matchId: m.id, home: m.home, away: m.away, scenarioText: groupScenarioText(m, sc.homeGoals, sc.awayGoals) });
-    }).join('') + '</div></div>';
-}
-function renderKnockoutNeedScenarios(predictions, players, actual, m, round) {
-    var scenarios = [m.home, m.away].filter(isConcreteTeam).map(function (team) { return { label: teamLabel(team) + ' clasifica', winner: team }; });
-    return '<div class="card"><span class="pill">Qué necesita cada uno</span><h2>' + esc(ROUND_LABELS[round] || 'Mata-mata') + ': ' + teamHtml(m.home) + ' vs ' + teamHtml(m.away) + '</h2><div class="scenario-grid">' + scenarios.map(function (sc) {
-        var sim = cloneEntry(actual);
-        sim.knockoutWinners[m.id] = sc.winner;
-        return renderScenarioCard(sc.label, predictions, players, actual, sim, []);
-    }).join('') + '</div></div>';
-}
-function groupScenarioText(match, homeGoals, awayGoals) {
-    return teamLabel(match.home) + ' ' + homeGoals + ' - ' + awayGoals + ' ' + teamLabel(match.away);
-}
-function groupPredictionText(entry, matchId, home, away) {
-    var score = (normalizeEntry(entry).groupScores || {})[matchId] || {};
-    if (!scoreHasValue(score)) return 'Sin marcador pronosticado para este partido';
-    return 'Pronosticó: ' + teamLabel(home) + ' ' + Number(score.homeGoals) + ' - ' + Number(score.awayGoals) + ' ' + teamLabel(away);
-}
-function renderScenarioCard(label, predictions, players, currentActual, simulatedActual, exacts, opts) {
-    opts = opts || {};
-    var current = getLeaderboard(predictions, players, currentActual);
-    var currentMap = {};
-    current.forEach(function (r) { currentMap[r.playerId] = r.total; });
-    var next = getLeaderboard(predictions, players, simulatedActual);
-    var gainers = next.map(function (r) {
-      var before = currentMap[r.playerId] || 0;
-      return { playerId: r.playerId, name: r.name, total: r.total, delta: r.total - before };
-    }).filter(function (r) {
-      return r.delta > 0;
-    }).sort(function (a, b) {
-      return b.delta - a.delta || b.total - a.total;
-    });
-    var scenarioHtml = opts.scenarioText ? '<p class="muted tiny">Escenario simulado: <strong>' + esc(opts.scenarioText) + '</strong></p>' : '';
-    var gainersHtml = gainers.length
-      ? '<p class="muted tiny">Sumarían puntos con este escenario:</p><div class="scenario-gain-list">' + gainers.map(function (g) {
-        var detail = opts.matchId ? '<span class="scenario-detail">' + esc(groupPredictionText(predictions[g.playerId], opts.matchId, opts.home, opts.away)) + '</span>' : '';
-        return '<div class="scenario-gain-row"><strong>' + esc(g.name) + '</strong><span class="scenario-points">Suma ' + g.delta + ' pts</span>' + detail + '<span class="scenario-total">Total simulado: ' + g.total + ' pts</span></div>';
-      }).join('') + '</div>'
-      : '<div class="muted tiny scenario-note">Sin cambios de puntos con este escenario.</div>';
-    var exactHtml = exacts && exacts.length ? '<p class="muted tiny scenario-note">Eligieron el marcador de referencia: ' + esc(exacts.slice(0, 5).join(', ')) + (exacts.length > 5 ? ' +' + (exacts.length - 5) : '') + '</p>' : '';
-    return '<div class="scenario-card"><h3>' + esc(label) + '</h3>' + scenarioHtml + gainersHtml + exactHtml + '</div>';
 }
 function buildRankingEvolution(predictions, players, actual) {
     var steps = [];
