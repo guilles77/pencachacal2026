@@ -1063,6 +1063,10 @@
     .hstrip{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:8px 0 4px;margin-top:12px;scroll-snap-type:x proximity}
     .hstrip::-webkit-scrollbar{display:none}
     .hstrip-card{flex:0 0 auto;width:160px;border:1px solid var(--line);border-radius:16px;padding:12px;background:rgba(255,255,255,.03);scroll-snap-align:start}
+    .hstrip-card[data-home-fixture]{cursor:pointer}
+    .hstrip-card[data-home-fixture]:hover{border-color:var(--line2);background:rgba(255,102,155,.08)}
+    .hstrip-card.is-selected{border-color:var(--pink)!important;background:rgba(255,102,155,.14)!important;box-shadow:0 0 0 1px rgba(255,102,155,.18) inset}
+    .hstrip-card[data-home-fixture]:focus-visible{outline:2px solid var(--pink2);outline-offset:3px}
     .hstrip-meta{font-size:.64rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em}
     .hstrip-when{font-size:.72rem;color:var(--muted);margin:2px 0 10px}
     .hstrip-teams{display:flex;flex-direction:column;gap:6px;font-weight:800;font-size:.92rem}
@@ -2117,7 +2121,7 @@ var app = {
     diagnostic: null,
     predictionView: localStorage.getItem('chacales_prediction_view') || 'groups',
     resultsView: localStorage.getItem('chacales_results_view') || 'matches',
-    uiState: { details: {}, v16ValidationOpen: false, rankingExpanded: false }
+    uiState: { details: {}, v16ValidationOpen: false, rankingExpanded: false, homeFixtureKey: '' }
 };
 var DEFAULT_CONFIG = {
     PREDICTION_DEADLINE: '2026-06-12T00:00:00-03:00',
@@ -2284,6 +2288,7 @@ function init() {
                     window.addEventListener('resize', setupResponsiveMode);
                     window.addEventListener('orientationchange', setupResponsiveMode);
                     document.body.addEventListener('click', handleClick);
+                    document.body.addEventListener('keydown', handleKeyDown);
                     document.body.addEventListener('submit', handleSubmit);
                     document.body.addEventListener('input', handleInput);
                     document.body.addEventListener('change', handleChange);
@@ -2603,9 +2608,27 @@ function renderV19OfficialSyncAdmin(config, state) {
     return '<details ' + detailAttrs('admin', 'official-sync', false) + '><summary>Sincronización oficial / live data</summary><div class="details-body"><p class="muted">Para resultados en vivo usá un endpoint JSON/API. La URL visual de FIFA queda como fuente para revisar, pero no conviene raspar HTML. Si el proveedor usa API key, podés poner <code>{API_KEY}</code> en la URL o cargarla abajo.</p><div class="v19-sync-grid">' + settingInput('OFFICIAL_RESULTS_SYNC_URL', 'URL JSON resultados', config.OFFICIAL_RESULTS_SYNC_URL || '', 'text') + settingInput('OFFICIAL_RESULTS_API_KEY', 'API key resultados', config.OFFICIAL_RESULTS_API_KEY || '', 'text') + settingInput('OFFICIAL_SQUADS_SYNC_URL', 'URL JSON planteles', config.OFFICIAL_SQUADS_SYNC_URL || '', 'text') + settingInput('OFFICIAL_SQUADS_API_KEY', 'API key planteles', config.OFFICIAL_SQUADS_API_KEY || '', 'text') + settingInput('OFFICIAL_SYNC_AUTO', 'Auto-sync resultados', config.OFFICIAL_SYNC_AUTO || 'FALSE', 'select') + settingInput('OFFICIAL_SYNC_MINUTES', 'Cada cuántos minutos', config.OFFICIAL_SYNC_MINUTES || '15', 'number') + '</div><div class="v19-sync-box"><strong>Estado:</strong><br><span class="muted tiny">Resultados: ' + esc(lastResults) + '</span><br><span class="muted tiny">Planteles: ' + esc(lastSquads) + '</span><br><span class="muted tiny">Config resultados: ' + (hasResults ? 'OK' : 'pendiente') + ' · Config planteles: ' + (hasSquads ? 'OK' : 'pendiente') + '</span></div><div class="v19-sync-actions"><button data-action="save-settings">Guardar configuración</button><button class="ghost" data-action="preview-official-results">Probar resultados</button><button class="good" data-action="sync-official-results">Sincronizar resultados</button><button class="ghost" data-action="sync-official-squads">Importar planteles</button><button class="ghost" data-action="install-official-sync">Activar auto-sync</button><button class="danger" data-action="remove-official-sync">Desactivar auto-sync</button></div><div class="v19-squad-note"><strong>Planteles:</strong> cuando FIFA publique listas finales oficiales, conviene importar recién ahí. Hasta entonces pueden cambiar convocados, dorsales y posiciones.</div></div></details>';
 }
 
-function renderUpcomingStrip(myDetail, fixtures) {
+function fixtureKey(fixture) {
+    if (!fixture) return '';
+    return String(fixture.type || '') + ':' + String(fixture.id || fixture.matchNo || '');
+}
+function fixtureByKey(fixtures, key) {
+    key = String(key || '');
+    return (fixtures || []).find(function (f) { return fixtureKey(f) === key; }) || null;
+}
+function selectedHomeFixture(fixtures) {
+    var pending = (fixtures || []).filter(function (f) { return !f.done; });
+    var selected = fixtureByKey(pending, app.uiState.homeFixtureKey);
+    if (!selected) {
+        selected = pending[0] || null;
+        app.uiState.homeFixtureKey = selected ? fixtureKey(selected) : '';
+    }
+    return selected;
+}
+function renderUpcomingStrip(myDetail, fixtures, selectedFixture) {
     var upcoming = (fixtures || []).filter(function (f) { return !f.done; }).slice(0, 14);
     if (!upcoming.length) return '';
+    var selectedKey = fixtureKey(selectedFixture);
     var cards = upcoming.map(function (f) {
         var row = detailRowForFixture(myDetail, f);
         var time = scheduleTimeForNo(f.matchNo);
@@ -2613,7 +2636,9 @@ function renderUpcomingStrip(myDetail, fixtures) {
         var liveTag = isLive ? livePillHtml(f.live) + ' ' : '';
         var scoreClass = isLive ? ' live-score' : '';
         var vsText = isLive && scoreHasValue(f.score || {}) ? fixtureScoreText(f) : 'vs';
-        return '<article class="hstrip-card' + (isLive ? ' is-live' : '') + '"><div class="hstrip-meta">' + liveTag + esc(f.stage || '') + '</div><div class="hstrip-when">' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</div><div class="hstrip-teams"><span class="hstrip-team">' + teamHtml(f.home) + '</span><span class="hstrip-vs' + scoreClass + '">' + esc(vsText) + '</span><span class="hstrip-team">' + teamHtml(f.away) + '</span></div><div class="hstrip-pred"><span>Tu pronóstico</span><strong>' + esc(fixturePredictionText(row)) + '</strong></div></article>';
+        var key = fixtureKey(f);
+        var isSelected = key && key === selectedKey;
+        return '<article class="hstrip-card' + (isLive ? ' is-live' : '') + (isSelected ? ' is-selected' : '') + '" data-home-fixture="' + esc(key) + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '"><div class="hstrip-meta">' + liveTag + esc(f.stage || '') + '</div><div class="hstrip-when">' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</div><div class="hstrip-teams"><span class="hstrip-team">' + teamHtml(f.home) + '</span><span class="hstrip-vs' + scoreClass + '">' + esc(vsText) + '</span><span class="hstrip-team">' + teamHtml(f.away) + '</span></div><div class="hstrip-pred"><span>Tu pronóstico</span><strong>' + esc(fixturePredictionText(row)) + '</strong></div></article>';
     }).join('');
     return '<div class="card glow"><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div><span class="muted tiny">deslizá →</span></div><div class="hstrip">' + cards + '</div></div>';
 }
@@ -2639,18 +2664,11 @@ function renderHome() {
     var leader = leaderboard[0] || null;
     var gap = (myRow && leader) ? (leader.total - myRow.total) : 0;
     var hfixtures = homeScheduledFixtures(actual).filter(function (f) { return isConcreteTeam(f.home) && isConcreteTeam(f.away); });
+    var selectedFixture = selectedHomeFixture(hfixtures);
     var html = [];
     if (app.error) html.push(renderErrorCard());
-    html.push(renderUpcomingStrip(detail, hfixtures));
-    html.push(renderNextMatchAllPredictions(hfixtures.filter(function (f) { return !f.done; })[0] || null));
-    var homeSections = splitMatchdaySections(hfixtures);
-    var homeNext = homeSections.current.length ? homeSections.current[0] : (homeSections.upcoming.length ? homeSections.upcoming[0] : null);
-    var homeUpcoming = homeSections.upcoming.slice(0, 12);
-    if (homeNext || homeUpcoming.length) {
-        var heroHtml = homeNext ? renderNextMatchHero(homeNext, detail) : '';
-        var upcomingListHtml = homeUpcoming.length ? '<div class="partidos-list">' + homeUpcoming.map(function (f) { return renderPartidoRow(f, detail); }).join('') + '</div>' : '';
-        html.push('<details class="card" ' + detailAttrs('home', 'proximos-partidos', false) + '><summary><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div>' + (homeUpcoming.length ? '<span class="pill">' + homeUpcoming.length + '</span>' : '') + '</div></summary><div class="details-body">' + heroHtml + upcomingListHtml + '</div></details>');
-    }
+    html.push(renderUpcomingStrip(detail, hfixtures, selectedFixture));
+    html.push(renderNextMatchAllPredictions(selectedFixture));
     if (r) html.push(renderMyPredictionsSection(myEntry));
     html.push('<div class="card"><div class="mp-links"><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
     el.innerHTML = html.join('');
@@ -2933,7 +2951,7 @@ function renderNextMatchAllPredictions(fixture) {
     rows.sort(function (a, b) { return (b.me - a.me) || a.name.localeCompare(b.name); });
     if (!rows.length) return '';
     var items = rows.map(function (it) { return '<div class="allpred-row' + (it.me ? ' is-me' : '') + '"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong><span>' + esc(it.pred) + '</span></div>'; }).join('');
-    return '<div class="card"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Próximo partido: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p></div></div><div class="allpred-list">' + items + '</div></div>';
+    return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p></div></div><div class="allpred-list">' + items + '</div></div>';
 }
 function renderPartidosView(r) {
     var actual = normalizeEntry((app.data && app.data.actual) || {});
@@ -3435,6 +3453,11 @@ function handleClick(event) {
         render();
         return;
     }
+    var homeFixturePick = event.target.closest('[data-home-fixture]');
+    if (homeFixturePick) {
+        selectHomeFixture(homeFixturePick);
+        return;
+    }
     var jump = event.target.closest('[data-tab-jump]');
     if (jump) {
         captureDetailsState();
@@ -3542,6 +3565,20 @@ function handleClick(event) {
         adminDelete(del.dataset.adminDelete);
         return;
     }
+}
+function handleKeyDown(event) {
+    var homeFixturePick = event.target && event.target.closest ? event.target.closest('[data-home-fixture]') : null;
+    if (!homeFixturePick || (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar')) return;
+    event.preventDefault();
+    selectHomeFixture(homeFixturePick);
+}
+function selectHomeFixture(el) {
+    app.uiState.homeFixtureKey = el.dataset.homeFixture || '';
+    render();
+    setTimeout(function () {
+        var d = document.getElementById('home-allpred');
+        if (d) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 40);
 }
 function handleSubmit(event) {
     event.preventDefault();
@@ -4715,9 +4752,20 @@ function topCount(map) {
     var rows = Object.keys(map || {}).map(function (k) { return { label: k, count: map[k] }; }).sort(function (a, b) { return b.count - a.count || a.label.localeCompare(b.label); });
     return rows[0] || null;
 }
+function recentScoredFixtures(actual, limit) {
+    return homeScheduledFixtures(actual).filter(function (f) { return f.done && isConcreteTeam(f.home) && isConcreteTeam(f.away); }).slice(-limit);
+}
+function pointsForFixtures(entry, actual, fixtures) {
+    var detail = scorePlayerDetail(entry, actual);
+    return (fixtures || []).reduce(function (sum, fixture) {
+        var row = detailRowForFixture(detail, fixture);
+        return sum + (row && Number.isFinite(row.points) ? row.points : 0);
+    }, 0);
+}
 function renderFunStats(predictions, players, actual, leaderboard, nextScenarioHtml) {
     var championMap = {}, scorerMap = {}, bestMap = {}, keeperMap = {}, youngMap = {};
     var movement = rankingMovementMap(predictions, players, actual);
+    var recentFixtures = recentScoredFixtures(actual, 4);
     var rows = Object.keys(predictions).map(function (id) {
         var entry = normalizeEntry(predictions[id]);
         var detail = scorePlayerDetail(entry, actual);
@@ -4735,20 +4783,20 @@ function renderFunStats(predictions, players, actual, leaderboard, nextScenarioH
         countMapAdd(youngMap, (entry.awards || {}).youngPlayer);
         var lb = (leaderboard.find(function (r) { return r.playerId === id; }) || {});
         var move = movement[id] || { delta: 0 };
-        return { playerId: id, name: playerNameById(players, id), exact: detail.exact, outcome: detail.outcome, goals: goals, drawHits: countDrawHitsForEntry(entry, actual), filled: filled, total: lb.total || 0, rank: lb.playerId ? leaderboard.indexOf(lb) + 1 : 0, movementDelta: move.delta || 0 };
+        return { playerId: id, name: playerNameById(players, id), exact: detail.exact, outcome: detail.outcome, miss: detail.miss, goals: goals, drawHits: countDrawHitsForEntry(entry, actual), filled: filled, total: lb.total || 0, rank: lb.playerId ? leaderboard.indexOf(lb) + 1 : 0, movementDelta: move.delta || 0, recent4Points: pointsForFixtures(entry, actual, recentFixtures) };
     });
     var mostExact = rows.slice().sort(function (a, b) { return b.exact - a.exact || b.total - a.total; })[0];
     var mostOutcome = rows.slice().sort(function (a, b) { return b.outcome - a.outcome || b.total - a.total; })[0];
-    var mufaRow = leaderboard && leaderboard.length ? leaderboard[leaderboard.length - 1] : null;
-    var syndrome = rows.slice().filter(function (r) { return r.movementDelta < 0; }).sort(function (a, b) { return Math.abs(b.movementDelta) - Math.abs(a.movementDelta) || a.total - b.total || a.name.localeCompare(b.name); })[0];
+    var mufaRow = rows.slice().sort(function (a, b) { return b.miss - a.miss || a.total - b.total || a.name.localeCompare(b.name); })[0];
+    var syndrome = recentFixtures.length ? rows.slice().sort(function (a, b) { return a.recent4Points - b.recent4Points || a.total - b.total || a.name.localeCompare(b.name); })[0] : null;
     var mostDrawHits = rows.slice().sort(function (a, b) { return b.drawHits - a.drawHits || b.total - a.total; })[0];
     var champ = topCount(championMap);
     var html = '<div class="insights-grid">';
     html += renderMetricCard('🎯 El quirúrgico', mostExact ? mostExact.name : '—', mostExact ? mostExact.exact + ' exactos' : 'Sin datos');
     html += renderMetricCard('🧭 El resultadista', mostOutcome ? mostOutcome.name : '—', mostOutcome ? mostOutcome.outcome + ' ganadores' : 'Sin datos');
     html += renderMetricCardHtml('🏆 Campeón popular', champ ? teamHtml(champ.label) : '—', champ ? champ.count + ' votos' : 'Sin votos');
-    html += renderMetricCardClass('🧿 El Mufa', mufaRow ? mufaRow.name : '—', mufaRow ? 'Último de la tabla · #' + leaderboard.length + ' · ' + mufaRow.total + ' pts' : 'Sin datos', 'is-mufa');
-    html += renderMetricCardClass('📉 El Síndrome', syndrome ? syndrome.name : '—', syndrome ? 'Bajó ' + Math.abs(syndrome.movementDelta) + ' puesto(s) desde el último partido' : 'Sin bajas desde el último partido', 'is-sindrome');
+    html += renderMetricCardClass('🧿 El Mufa', mufaRow ? mufaRow.name : '—', mufaRow ? mufaRow.miss + ' fallo(s)' : 'Sin datos', 'is-mufa');
+    html += renderMetricCardClass('📉 El Síndrome', syndrome ? syndrome.name : '—', syndrome ? syndrome.recent4Points + ' pts en últimos ' + recentFixtures.length + ' partido(s)' : 'Sin partidos recientes', 'is-sindrome');
     html += renderMetricCardClass('🤝 El Cagón', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.name : '—', mostDrawHits && mostDrawHits.drawHits > 0 ? mostDrawHits.drawHits + ' empate(s) embocado(s)' : 'Sin empates embocados', 'is-cagon');
     html += '</div><div class="stats-priority-grid"><div class="card"><span class="pill">Premios populares</span><h2>Lo más elegido</h2>' + renderPickList('Goleador', scorerMap) + renderPickList('Mejor jugador', bestMap) + renderPickList('Mejor arquero', keeperMap) + renderPickList('Joven', youngMap) + '</div>' + nextScenarioHtml + '</div>';
     return html;
