@@ -4848,6 +4848,8 @@ function renderNeedScenarios(predictions, players, actual) {
     return renderKnockoutNeedScenarios(predictions, players, actual, next.match, next.round);
 }
 function renderGroupNeedScenarios(predictions, players, actual, m) {
+    var baseline = cloneEntry(actual);
+    if (baseline.groupScores) delete baseline.groupScores[m.id];
     var scenarios = [
         { label: teamLabel(m.home) + ' gana', homeGoals: 1, awayGoals: 0 },
         { label: 'Empate', homeGoals: 1, awayGoals: 1 },
@@ -4857,7 +4859,7 @@ function renderGroupNeedScenarios(predictions, players, actual, m) {
         var sim = cloneEntry(actual);
         sim.groupScores[m.id] = { homeGoals: sc.homeGoals, awayGoals: sc.awayGoals };
         var exacts = Object.keys(predictions).filter(function (id) { var p = (normalizeEntry(predictions[id]).groupScores || {})[m.id] || {}; return scoreHasValue(p) && Number(p.homeGoals) === sc.homeGoals && Number(p.awayGoals) === sc.awayGoals; }).map(function (id) { return playerNameById(players, id); });
-        return renderScenarioCard(sc.label, predictions, players, actual, sim, exacts, { matchId: m.id, home: m.home, away: m.away, scenarioText: groupScenarioText(m, sc.homeGoals, sc.awayGoals) });
+        return renderScenarioCard(sc.label, predictions, players, baseline, sim, exacts, { matchId: m.id, home: m.home, away: m.away, scenarioText: groupScenarioText(m, sc.homeGoals, sc.awayGoals) });
     }).join('') + '</div></div>';
 }
 function renderKnockoutNeedScenarios(predictions, players, actual, m, round) {
@@ -4889,7 +4891,7 @@ function renderScenarioCard(label, predictions, players, currentActual, simulate
       return r.delta > 0;
     }).sort(function (a, b) {
       return b.delta - a.delta || b.total - a.total;
-    }).slice(0, 5);
+    });
     var scenarioHtml = opts.scenarioText ? '<p class="muted tiny">Escenario simulado: <strong>' + esc(opts.scenarioText) + '</strong></p>' : '';
     var gainersHtml = gainers.length
       ? '<p class="muted tiny">Sumarían puntos con este escenario:</p><div class="scenario-gain-list">' + gainers.map(function (g) {
