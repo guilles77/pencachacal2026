@@ -1270,6 +1270,18 @@ var LC_API_URL = (function () {
 })();
 var HAS_BACKEND = !!(IS_APPS_SCRIPT || LC_API_URL);
 var LC_STATIC = (typeof window !== 'undefined' && window.LC_STATIC_DATA) ? window.LC_STATIC_DATA : null;
+// Ambiente de PRUEBAS (sandbox): se activa con ?pruebas=1 (queda guardado por navegador;
+// con ?pruebas=0 se apaga). Permite cargar resultados a mano y ver como se comporta la penca.
+// NO usa la API en vivo y guarda todo solo en este navegador (localStorage SANDBOX_KEY).
+var LC_SANDBOX = (function () {
+    try {
+        var href = String(location.href || '');
+        if (/[?&#]pruebas=0(?:[&#]|$)/i.test(href)) { localStorage.removeItem('lc_sandbox'); return false; }
+        if (/[?&#]pruebas=1(?:[&#]|$)/i.test(href)) { localStorage.setItem('lc_sandbox', '1'); return true; }
+        return localStorage.getItem('lc_sandbox') === '1';
+    } catch (e) { return false; }
+})();
+var SANDBOX_KEY = 'chacales_sandbox_actual';
 var LOCAL_KEY = 'penca_chacales_online_demo_v1';
 var GROUPS = {
     A: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'],
@@ -2310,7 +2322,7 @@ function init() {
                     });
                     window.addEventListener('unhandledrejection', function (event) { var reason = event.reason || {}; app.error = new Error(reason.message || String(reason)); render(); });
                     var _refreshBtn = document.getElementById('refresh-btn'); if (_refreshBtn) _refreshBtn.addEventListener('click', function () { return refresh(); });
-                    document.addEventListener('visibilitychange', function () { if (!document.hidden && LC_STATIC) fetchOfficialResults(); });
+                    document.addEventListener('visibilitychange', function () { if (!document.hidden && LC_STATIC && !LC_SANDBOX) fetchOfficialResults(); });
                     if (isAdminRequested()) app.activeTab = 'admin';
                     return [4 /*yield*/, refresh()];
                 case 1:
@@ -2348,7 +2360,7 @@ function refresh() {
                 case 3:
                     app.data = LC_STATIC ? loadStaticData() : loadLocalDemo();
                     app.myDraft = normalizeEntry((app.data.requester && app.data.requester.draft) || {});
-                    if (LC_STATIC) fetchOfficialResults();
+                    if (LC_STATIC && !LC_SANDBOX) fetchOfficialResults();
                     _b.label = 4;
                 case 4:
                     app.adminActual = normalizeEntry((app.adminState && app.adminState.actual) || (app.data && app.data.actual) || {});
@@ -2404,7 +2416,12 @@ function loadStaticData() {
     var preds = LC_STATIC.predictions || {};
     var requester = found ? { playerId: found.playerId, name: found.name, submittedAt: 'cargado', lastSavedAt: '', draft: preds[found.playerId] || {}, submitted: preds[found.playerId] || null } : null;
     var sActual = normalizeEntry(LC_STATIC.actual || {});
-    try { var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null'); if (cachedActual && cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores); } catch (e) {}
+    if (LC_SANDBOX) {
+        // En pruebas: arrancar de los resultados cargados a mano (si hay); si no, del actual base.
+        try { var sb = JSON.parse(localStorage.getItem(SANDBOX_KEY) || 'null'); if (sb) sActual = normalizeEntry(sb); } catch (e) {}
+    } else {
+        try { var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null'); if (cachedActual && cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores); } catch (e) {}
+    }
     return { ok: true, appUrl: location.href.split('?')[0], config: __assign(__assign({}, DEFAULT_CONFIG), (LC_STATIC.config || {})), players: players, predictions: preds, actual: sActual, squads: {}, requester: requester, viewOnly: true };
 }
 function renderUserGate() {
@@ -3136,6 +3153,7 @@ function renderRanking() {
 
 function renderResults() {
     var el = document.getElementById('results');
+    if (LC_SANDBOX) { renderSandbox(el); return; }
     var actual = normalizeEntry((app.data && app.data.actual) || {});
     var actualProgress = predictionProgress(actual);
     var official = getConfig().OFFICIAL_RESULTS_URL || DEFAULT_CONFIG.OFFICIAL_RESULTS_URL;
@@ -3147,6 +3165,32 @@ function renderResults() {
     el.innerHTML = html.join('');
 }
 
+function renderSandbox(el) {
+    app.adminActual = app.adminActual || normalizeEntry((app.data && app.data.actual) || {});
+    var prog = predictionProgress(normalizeEntry(app.adminActual));
+    el.innerHTML = '<div class="card glow"><span class="pill warn">Ambiente de pruebas</span>'
+        + '<h2>Cargar resultados (sandbox)</h2>'
+        + '<p class="muted">Cargá resultados de grupos y mata-mata y mirá cómo se comporta la penca: bracket, puntajes y ranking. Se guardan <strong>solo en este navegador</strong> y no afectan a nadie. La API en vivo está desactivada acá.</p>'
+        + '<div class="row" style="margin-top:8px"><strong>' + prog.done + '/' + prog.total + '</strong>&nbsp;<span class="muted tiny">campos cargados</span></div>'
+        + '<div class="row" style="margin-top:10px"><button class="good" data-action="save-sandbox">Guardar y recalcular</button> <button class="ghost" data-action="download-actual-json">Descargar JSON</button> <button class="ghost danger" data-action="reset-sandbox">Borrar todo</button></div></div>'
+        + renderEntryEditor(app.adminActual, 'actual', false);
+}
+function saveSandboxAction() {
+    var entry = normalizeEntry(app.adminActual || {});
+    try { localStorage.setItem(SANDBOX_KEY, JSON.stringify(entry)); } catch (e) {}
+    app.data.actual = entry;
+    app.adminActual = normalizeEntry(entry);
+    render();
+    toast('Resultados de prueba guardados. Mirá Ranking, Stats y Mi puntaje.');
+}
+function resetSandboxAction() {
+    try { localStorage.removeItem(SANDBOX_KEY); } catch (e) {}
+    var base = normalizeEntry((LC_STATIC && LC_STATIC.actual) || {});
+    app.data.actual = base;
+    app.adminActual = normalizeEntry(base);
+    render();
+    toast('Pruebas reiniciadas (volvió a los resultados base).');
+}
 function renderAdmin() {
     var el = document.getElementById('admin');
     var hasAdmin = !!app.adminState;
@@ -3714,7 +3758,8 @@ function updateFromControl(target) {
 var softTimer = null;
 function renderSoft(scope) { clearTimeout(softTimer); softTimer = setTimeout(function () { stableScroll(function () { if (scope === 'my' && app.activeTab === 'my')
     renderMy(); if (scope === 'actual' && app.activeTab === 'admin')
-    renderAdmin(); }); }, 80); }
+    renderAdmin(); if (scope === 'actual' && LC_SANDBOX && app.activeTab === 'results')
+    renderResults(); }); }, 80); }
 function runAction(action) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
@@ -3727,6 +3772,10 @@ function runAction(action) {
                     return [2 /*return*/, downloadJson('mi-pronostico-chacales.json', app.myDraft)];
                 if (action === 'save-actual')
                     return [2 /*return*/, saveActualAction()];
+                if (action === 'save-sandbox')
+                    return [2 /*return*/, saveSandboxAction()];
+                if (action === 'reset-sandbox')
+                    return [2 /*return*/, resetSandboxAction()];
                 if (action === 'download-actual-json')
                     return [2 /*return*/, downloadJson('resultados-reales-chacales.json', app.adminActual)];
                 if (action === 'save-settings')
