@@ -1081,15 +1081,16 @@
     .hstrip-pred span{display:block;font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em}
     .hstrip-pred strong{font-size:1.05rem;color:var(--pink2)}
     .allpred-list{display:grid;gap:8px;margin-top:12px}
-    .allpred-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+    .allpred-row{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
     .allpred-row.is-me{border-color:var(--line2);background:rgba(255,102,155,.12)}
-    .allpred-row strong{font-weight:800}
-    .allpred-row span{font-weight:800;color:var(--pink2);white-space:nowrap}
     .allpred-row.can-score{border-color:rgba(120,230,150,.5);background:rgba(120,230,150,.10)}
-    .allpred-main{display:flex;flex-direction:column;gap:3px;min-width:0}
-    .allpred-cross{display:flex;align-items:center;gap:6px;font-weight:700;font-size:.8rem;color:var(--muted)}
-    .allpred-cross .pred-vs{color:var(--muted2);font-weight:600;margin:0 1px}
-    .allpred-right{display:flex;align-items:center;gap:8px;white-space:nowrap}
+    .allpred-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .allpred-top strong{font-weight:800}
+    .allpred-detail{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;font-size:.82rem}
+    .allpred-cross{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--muted)}
+    .allpred-cross .pred-vs{color:var(--muted2);font-weight:600}
+    .allpred-sep{color:var(--muted2)}
+    .allpred-score{font-weight:700;color:var(--pink2);white-space:nowrap}
     .allpred-badge{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:10px;white-space:nowrap}
     .allpred-badge.good{background:rgba(120,230,150,.18);color:#7fe6a0}
     .allpred-badge.warn{background:rgba(255,214,143,.16);color:#ffd68f}
@@ -3011,7 +3012,8 @@ function renderNextMatchAllPredictions(fixture) {
     var items = rows.map(function (it) {
         var cls = 'allpred-row' + (it.me ? ' is-me' : '') + (it.canScore ? ' can-score' : '');
         var badge = it.canScore ? '<span class="allpred-badge good">puede sumar</span>' : (it.oneTeam ? '<span class="allpred-badge warn">1 equipo</span>' : '');
-        return '<div class="' + cls + '"><div class="allpred-main"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong>' + it.crossHtml + '</div><div class="allpred-right"><span>' + esc(it.pred) + '</span>' + badge + '</div></div>';
+        var crossPart = it.crossHtml ? it.crossHtml + (it.pred ? '<span class="allpred-sep">·</span>' : '') : '';
+        return '<div class="' + cls + '"><div class="allpred-top"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong>' + badge + '</div><div class="allpred-detail">' + crossPart + (it.pred ? '<span class="allpred-score">' + esc(it.pred) + '</span>' : '') + '</div></div>';
     }).join('');
     var hint = isKo ? '<p class="muted tiny" style="margin:.25rem 0 0">Cada uno con el cruce que pronosticó. Resaltados los que acertaron el cruce y pueden sumar puntos en este partido.</p>' : '';
     return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p>' + hint + '</div></div><div class="allpred-list">' + items + '</div></div>';
