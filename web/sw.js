@@ -1,5 +1,5 @@
 /* Penca Chacal · service worker (Vercel) */
-const CACHE = 'penca-chacal-v24';
+const CACHE = 'penca-chacal-v25';
 const SHELL = [
   '/',
   '/index.html',

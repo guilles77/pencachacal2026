@@ -1081,10 +1081,20 @@
     .hstrip-pred span{display:block;font-size:.6rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em}
     .hstrip-pred strong{font-size:1.05rem;color:var(--pink2)}
     .allpred-list{display:grid;gap:8px;margin-top:12px}
-    .allpred-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+    .allpred-row{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
     .allpred-row.is-me{border-color:var(--line2);background:rgba(255,102,155,.12)}
-    .allpred-row strong{font-weight:800}
-    .allpred-row span{font-weight:800;color:var(--pink2);white-space:nowrap}
+    .allpred-row.can-score{border-color:rgba(120,230,150,.5);background:rgba(120,230,150,.10)}
+    .allpred-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .allpred-top strong{font-weight:800}
+    .allpred-detail{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;font-size:.82rem}
+    .allpred-cross{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--muted)}
+    .allpred-cross .pred-vs{color:var(--muted2);font-weight:600}
+    .allpred-sep{color:var(--muted2)}
+    .allpred-score{font-weight:700;color:var(--pink2);white-space:nowrap}
+    .allpred-badge{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:10px;white-space:nowrap}
+    .allpred-badge.good{background:rgba(120,230,150,.18);color:#7fe6a0}
+    .allpred-badge.warn{background:rgba(255,214,143,.16);color:#ffd68f}
+    .rank-ko-breakdown .ko-hit-list{display:flex;flex-wrap:wrap;gap:4px}
 
     /* ============ v26 · sacar el safe-area duplicado arriba (app instalada) ============ */
     .standalone-app.mobile-mode{padding-top:0!important}
@@ -1276,6 +1286,18 @@ var LC_API_URL = (function () {
 })();
 var HAS_BACKEND = !!(IS_APPS_SCRIPT || LC_API_URL);
 var LC_STATIC = (typeof window !== 'undefined' && window.LC_STATIC_DATA) ? window.LC_STATIC_DATA : null;
+// Ambiente de PRUEBAS (sandbox): se activa con ?pruebas=1 (queda guardado por navegador;
+// con ?pruebas=0 se apaga). Permite cargar resultados a mano y ver como se comporta la penca.
+// NO usa la API en vivo y guarda todo solo en este navegador (localStorage SANDBOX_KEY).
+var LC_SANDBOX = (function () {
+    try {
+        var href = String(location.href || '');
+        if (/[?&#]pruebas=0(?:[&#]|$)/i.test(href)) { localStorage.removeItem('lc_sandbox'); return false; }
+        if (/[?&#]pruebas=1(?:[&#]|$)/i.test(href)) { localStorage.setItem('lc_sandbox', '1'); return true; }
+        return localStorage.getItem('lc_sandbox') === '1';
+    } catch (e) { return false; }
+})();
+var SANDBOX_KEY = 'chacales_sandbox_actual';
 var LOCAL_KEY = 'penca_chacales_online_demo_v1';
 var GROUPS = {
     A: ['México', 'Sudáfrica', 'Corea del Sur', 'República Checa'],
@@ -1869,7 +1891,7 @@ var MATCH_KICKOFF_ISO = {
     17:'2026-06-16T16:00:00-03:00',18:'2026-06-16T19:00:00-03:00',19:'2026-06-16T22:00:00-03:00',20:'2026-06-17T01:00:00-03:00',
     21:'2026-06-17T20:00:00-03:00',22:'2026-06-17T17:00:00-03:00',23:'2026-06-17T14:00:00-03:00',24:'2026-06-17T23:00:00-03:00',
     25:'2026-06-18T13:00:00-03:00',26:'2026-06-18T16:00:00-03:00',27:'2026-06-18T19:00:00-03:00',28:'2026-06-18T22:00:00-03:00',
-    29:'2026-06-19T21:30:00-03:00',30:'2026-06-19T19:00:00-03:00',31:'2026-06-20T00:00:00-03:00',32:'2026-06-19T16:00:00-03:00',
+    29:'2026-06-19T21:30:00-03:00',30:'2026-06-19T19:00:00-03:00',31:'2026-06-20T01:00:00-03:00',32:'2026-06-19T16:00:00-03:00',
     33:'2026-06-20T17:00:00-03:00',34:'2026-06-20T21:00:00-03:00',35:'2026-06-20T14:00:00-03:00',36:'2026-06-21T01:00:00-03:00',
     37:'2026-06-21T19:00:00-03:00',38:'2026-06-21T13:00:00-03:00',39:'2026-06-21T16:00:00-03:00',40:'2026-06-21T22:00:00-03:00',
     41:'2026-06-22T21:00:00-03:00',42:'2026-06-22T18:00:00-03:00',43:'2026-06-22T14:00:00-03:00',44:'2026-06-23T00:00:00-03:00',
@@ -2317,7 +2339,7 @@ function init() {
                     });
                     window.addEventListener('unhandledrejection', function (event) { var reason = event.reason || {}; app.error = new Error(reason.message || String(reason)); render(); });
                     var _refreshBtn = document.getElementById('refresh-btn'); if (_refreshBtn) _refreshBtn.addEventListener('click', function () { return refresh(); });
-                    document.addEventListener('visibilitychange', function () { if (!document.hidden && LC_STATIC) fetchOfficialResults(); });
+                    document.addEventListener('visibilitychange', function () { if (!document.hidden && LC_STATIC && !LC_SANDBOX) fetchOfficialResults(); });
                     if (isAdminRequested()) app.activeTab = 'admin';
                     return [4 /*yield*/, refresh()];
                 case 1:
@@ -2355,7 +2377,7 @@ function refresh() {
                 case 3:
                     app.data = LC_STATIC ? loadStaticData() : loadLocalDemo();
                     app.myDraft = normalizeEntry((app.data.requester && app.data.requester.draft) || {});
-                    if (LC_STATIC) fetchOfficialResults();
+                    if (LC_STATIC && !LC_SANDBOX) fetchOfficialResults();
                     _b.label = 4;
                 case 4:
                     app.adminActual = normalizeEntry((app.adminState && app.adminState.actual) || (app.data && app.data.actual) || {});
@@ -2411,14 +2433,19 @@ function loadStaticData() {
     var preds = LC_STATIC.predictions || {};
     var requester = found ? { playerId: found.playerId, name: found.name, submittedAt: 'cargado', lastSavedAt: '', draft: preds[found.playerId] || {}, submitted: preds[found.playerId] || null } : null;
     var sActual = normalizeEntry(LC_STATIC.actual || {});
-    try {
-        var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null');
-        if (cachedActual) {
-            if (cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores);
-            if (cachedActual.knockoutScores) sActual.knockoutScores = __assign(__assign({}, sActual.knockoutScores), cachedActual.knockoutScores);
-            if (cachedActual.knockoutWinners) sActual.knockoutWinners = __assign(__assign({}, sActual.knockoutWinners), cachedActual.knockoutWinners);
-        }
-    } catch (e) {}
+    if (LC_SANDBOX) {
+        // En pruebas: arrancar de los resultados cargados a mano (si hay); si no, del actual base.
+        try { var sb = JSON.parse(localStorage.getItem(SANDBOX_KEY) || 'null'); if (sb) sActual = normalizeEntry(sb); } catch (e) {}
+    } else {
+        try {
+            var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null');
+            if (cachedActual) {
+                if (cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores);
+                if (cachedActual.knockoutScores) sActual.knockoutScores = __assign(__assign({}, sActual.knockoutScores), cachedActual.knockoutScores);
+                if (cachedActual.knockoutWinners) sActual.knockoutWinners = __assign(__assign({}, sActual.knockoutWinners), cachedActual.knockoutWinners);
+            }
+        } catch (e) {}
+    }
     return { ok: true, appUrl: location.href.split('?')[0], config: __assign(__assign({}, DEFAULT_CONFIG), (LC_STATIC.config || {})), players: players, predictions: preds, actual: sActual, squads: {}, requester: requester, viewOnly: true };
 }
 function renderUserGate() {
@@ -3018,15 +3045,31 @@ function renderNextMatchAllPredictions(fixture) {
     var predictions = getSubmittedPredictionsForView();
     var players = getPlayersForView();
     var req = requester();
+    var isKo = fixture.type === 'ko';
+    var realTeams = [fixture.home, fixture.away];
     var rows = Object.keys(predictions).map(function (pid) {
         var det = scorePlayerDetail(normalizeEntry(predictions[pid]), actual);
         var row = detailRowForFixture(det, fixture);
-        return { pid: pid, name: playerNameById(players, pid), pred: fixturePredictionText(row), me: !!(req && pid === req.playerId) };
+        var crossHtml = '', canScore = false, oneTeam = false;
+        if (isKo && row && row.predictedMatch) {
+            var pm = row.predictedMatch;
+            var predTeams = [pm.home, pm.away].filter(isConcreteTeam);
+            var hit = predTeams.filter(function (t) { return realTeams.indexOf(t) !== -1; }).length;
+            canScore = hit === 2; oneTeam = hit === 1;
+            crossHtml = '<div class="allpred-cross">' + teamHtml(pm.home) + '<span class="pred-vs">vs</span>' + teamHtml(pm.away) + '</div>';
+        }
+        return { pid: pid, name: playerNameById(players, pid), pred: fixturePredictionText(row), crossHtml: crossHtml, canScore: canScore, oneTeam: oneTeam, me: !!(req && pid === req.playerId) };
     });
-    rows.sort(function (a, b) { return (b.me - a.me) || a.name.localeCompare(b.name); });
+    rows.sort(function (a, b) { return (b.me - a.me) || (b.canScore - a.canScore) || (b.oneTeam - a.oneTeam) || a.name.localeCompare(b.name); });
     if (!rows.length) return '';
-    var items = rows.map(function (it) { return '<div class="allpred-row' + (it.me ? ' is-me' : '') + '"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong><span>' + esc(it.pred) + '</span></div>'; }).join('');
-    return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p></div></div><div class="allpred-list">' + items + '</div></div>';
+    var items = rows.map(function (it) {
+        var cls = 'allpred-row' + (it.me ? ' is-me' : '') + (it.canScore ? ' can-score' : '');
+        var badge = it.canScore ? '<span class="allpred-badge good">puede sumar</span>' : (it.oneTeam ? '<span class="allpred-badge warn">1 equipo</span>' : '');
+        var crossPart = it.crossHtml ? it.crossHtml + (it.pred ? '<span class="allpred-sep">·</span>' : '') : '';
+        return '<div class="' + cls + '"><div class="allpred-top"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong>' + badge + '</div><div class="allpred-detail">' + crossPart + (it.pred ? '<span class="allpred-score">' + esc(it.pred) + '</span>' : '') + '</div></div>';
+    }).join('');
+    var hint = isKo ? '<p class="muted tiny" style="margin:.25rem 0 0">Cada uno con el cruce que pronosticó. Resaltados los que acertaron el cruce y pueden sumar puntos en este partido.</p>' : '';
+    return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p>' + hint + '</div></div><div class="allpred-list">' + items + '</div></div>';
 }
 function renderPartidosView(r) {
     var actual = normalizeEntry((app.data && app.data.actual) || {});
@@ -3155,6 +3198,18 @@ function renderRankingMatchRow(fixture, detail, showResult) {
         + '<div class="partidos-row-pred"><span>Pronóstico:</span><strong>' + esc(predText) + '</strong>' + ptsHtml + '</div>'
         + '</article>';
 }
+function renderRankKoBreakdown(detail) {
+    var koRows = (detail && detail.koRows) || [];
+    var rows = koRows.filter(function (r) { return (r.predicted && r.predicted.length) || (r.actual && r.actual.length); });
+    if (!rows.length) return '';
+    var total = detail.koTeamPoints || 0;
+    var body = rows.map(function (r) {
+        var hits = r.hits.length ? '<div class="ko-hit-list">' + r.hits.map(function (t) { return '<span class="pill good">' + teamHtml(t) + '</span>'; }).join('') + '</div>' : '<span class="muted tiny">Sin aciertos</span>';
+        return '<tr><td><strong>' + esc(r.label) + '</strong><div class="muted tiny">' + r.unit + ' pts/equipo</div></td><td>' + r.hits.length + '/' + r.predicted.length + '</td><td>' + hits + '</td><td><strong>' + r.points + '</strong></td></tr>';
+    }).join('');
+    return '<details class="rank-ko-breakdown" ' + detailAttrs('ranking', 'rank-ko', true) + ' style="margin-top:12px"><summary>Puntos por equipos que pasaron de ronda (' + total + ' pts)</summary>'
+        + '<div class="details-body"><div class="score-table-wrap"><table class="point-table"><thead><tr><th>Ronda</th><th>Aciertos</th><th>Equipos que pasaron</th><th>Pts</th></tr></thead><tbody>' + body + '</tbody></table></div></div></details>';
+}
 function renderRankingPlayerDetail(playerId, predictions, players, actual, leaderboard) {
     var name = playerNameById(players, playerId);
     var lbRow = (leaderboard || []).find(function (r) { return r.playerId === playerId; }) || {};
@@ -3170,6 +3225,7 @@ function renderRankingPlayerDetail(playerId, predictions, players, actual, leade
     return '<div class="card rank-detail-card" id="rank-detail" style="margin-top:16px">'
         + '<div class="row space"><div><span class="pill">Detalle por jugador</span><h2>' + esc(name) + '</h2></div><div class="partidos-total"><strong>' + (lbRow.total || 0) + '</strong><span>pts</span></div></div>'
         + selector
+        + renderRankKoBreakdown(detail)
         + '<details ' + detailAttrs('ranking', 'rank-previous', false) + ' style="margin-top:12px"><summary>Resultados previos y puntos (' + played.length + ')</summary><div class="details-body">' + playedHtml + '</div></details>'
         + '<details ' + detailAttrs('ranking', 'rank-upcoming', true) + ' style="margin-top:12px"><summary>Próximos pronósticos de ' + esc(name) + ' (' + pending.length + ')</summary><div class="details-body">' + pendingHtml + '</div></details>'
         + '</div>';
@@ -3195,6 +3251,7 @@ function renderRanking() {
 
 function renderResults() {
     var el = document.getElementById('results');
+    if (LC_SANDBOX) { renderSandbox(el); return; }
     var actual = normalizeEntry((app.data && app.data.actual) || {});
     var actualProgress = predictionProgress(actual);
     var official = getConfig().OFFICIAL_RESULTS_URL || DEFAULT_CONFIG.OFFICIAL_RESULTS_URL;
@@ -3206,6 +3263,32 @@ function renderResults() {
     el.innerHTML = html.join('');
 }
 
+function renderSandbox(el) {
+    app.adminActual = app.adminActual || normalizeEntry((app.data && app.data.actual) || {});
+    var prog = predictionProgress(normalizeEntry(app.adminActual));
+    el.innerHTML = '<div class="card glow"><span class="pill warn">Ambiente de pruebas</span>'
+        + '<h2>Cargar resultados (sandbox)</h2>'
+        + '<p class="muted">Cargá resultados de grupos y mata-mata y mirá cómo se comporta la penca: bracket, puntajes y ranking. Se guardan <strong>solo en este navegador</strong> y no afectan a nadie. La API en vivo está desactivada acá.</p>'
+        + '<div class="row" style="margin-top:8px"><strong>' + prog.done + '/' + prog.total + '</strong>&nbsp;<span class="muted tiny">campos cargados</span></div>'
+        + '<div class="row" style="margin-top:10px"><button class="good" data-action="save-sandbox">Guardar y recalcular</button> <button class="ghost" data-action="download-actual-json">Descargar JSON</button> <button class="ghost danger" data-action="reset-sandbox">Borrar todo</button></div></div>'
+        + renderEntryEditor(app.adminActual, 'actual', false);
+}
+function saveSandboxAction() {
+    var entry = normalizeEntry(app.adminActual || {});
+    try { localStorage.setItem(SANDBOX_KEY, JSON.stringify(entry)); } catch (e) {}
+    app.data.actual = entry;
+    app.adminActual = normalizeEntry(entry);
+    render();
+    toast('Resultados de prueba guardados. Mirá Ranking, Stats y Mi puntaje.');
+}
+function resetSandboxAction() {
+    try { localStorage.removeItem(SANDBOX_KEY); } catch (e) {}
+    var base = normalizeEntry((LC_STATIC && LC_STATIC.actual) || {});
+    app.data.actual = base;
+    app.adminActual = normalizeEntry(base);
+    render();
+    toast('Pruebas reiniciadas (volvió a los resultados base).');
+}
 function renderAdmin() {
     var el = document.getElementById('admin');
     var hasAdmin = !!app.adminState;
@@ -3773,7 +3856,8 @@ function updateFromControl(target) {
 var softTimer = null;
 function renderSoft(scope) { clearTimeout(softTimer); softTimer = setTimeout(function () { stableScroll(function () { if (scope === 'my' && app.activeTab === 'my')
     renderMy(); if (scope === 'actual' && app.activeTab === 'admin')
-    renderAdmin(); }); }, 80); }
+    renderAdmin(); if (scope === 'actual' && LC_SANDBOX && app.activeTab === 'results')
+    renderResults(); }); }, 80); }
 function runAction(action) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
@@ -3786,6 +3870,10 @@ function runAction(action) {
                     return [2 /*return*/, downloadJson('mi-pronostico-chacales.json', app.myDraft)];
                 if (action === 'save-actual')
                     return [2 /*return*/, saveActualAction()];
+                if (action === 'save-sandbox')
+                    return [2 /*return*/, saveSandboxAction()];
+                if (action === 'reset-sandbox')
+                    return [2 /*return*/, resetSandboxAction()];
                 if (action === 'download-actual-json')
                     return [2 /*return*/, downloadJson('resultados-reales-chacales.json', app.adminActual)];
                 if (action === 'save-settings')
