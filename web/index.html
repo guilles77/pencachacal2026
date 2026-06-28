@@ -1947,7 +1947,8 @@ function homeScheduledFixtures(actual) {
             knockoutMatchesForRound(bracket, round).forEach(function (m) {
                 var no = fixtureNoFromKoId(m.id);
                 var score = (actual.knockoutScores || {})[m.id] || {};
-                fixtures.push({ type:'ko', id:m.id, matchNo:no, round:round, stage:ROUND_LABELS[round] || 'Mata-mata', home:m.home, away:m.away, date:scheduleDateForNo(no), done:!!validWinner(actual, m), score:score, winner:validWinner(actual, m) });
+                var liveStatus = (lf[m.id] && withinLiveWindow(kickoffDateForNo(no))) ? lf[m.id] : null;
+                fixtures.push({ type:'ko', id:m.id, matchNo:no, round:round, stage:ROUND_LABELS[round] || 'Mata-mata', home:m.home, away:m.away, date:scheduleDateForNo(no), done:!!validWinner(actual, m) && !liveStatus, score:score, winner:validWinner(actual, m), live:liveStatus });
             });
         });
     }
@@ -2410,7 +2411,14 @@ function loadStaticData() {
     var preds = LC_STATIC.predictions || {};
     var requester = found ? { playerId: found.playerId, name: found.name, submittedAt: 'cargado', lastSavedAt: '', draft: preds[found.playerId] || {}, submitted: preds[found.playerId] || null } : null;
     var sActual = normalizeEntry(LC_STATIC.actual || {});
-    try { var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null'); if (cachedActual && cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores); } catch (e) {}
+    try {
+        var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null');
+        if (cachedActual) {
+            if (cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores);
+            if (cachedActual.knockoutScores) sActual.knockoutScores = __assign(__assign({}, sActual.knockoutScores), cachedActual.knockoutScores);
+            if (cachedActual.knockoutWinners) sActual.knockoutWinners = __assign(__assign({}, sActual.knockoutWinners), cachedActual.knockoutWinners);
+        }
+    } catch (e) {}
     return { ok: true, appUrl: location.href.split('?')[0], config: __assign(__assign({}, DEFAULT_CONFIG), (LC_STATIC.config || {})), players: players, predictions: preds, actual: sActual, squads: {}, requester: requester, viewOnly: true };
 }
 function renderUserGate() {
@@ -2448,8 +2456,33 @@ function groupPairIndex() {
     GROUP_MATCHES.forEach(function (g) { _GROUP_PAIR_IDX[g.group + '|' + [g.home, g.away].slice().sort().join('~')] = g; });
     return _GROUP_PAIR_IDX;
 }
-function normalizeOfficialMatches(matches) {
+function knockoutPairIndex(actual) {
+    var index = {};
+    actual = normalizeEntry(actual || {});
+    if (!allGroupMatchesComplete(actual)) return index;
+    var bracket = buildBracket(actual);
+    (bracket.allMatches || []).forEach(function (m) {
+        if (!isConcreteTeam(m.home) || !isConcreteTeam(m.away)) return;
+        index[[m.home, m.away].slice().sort().join('~')] = m;
+    });
+    return index;
+}
+function officialWinnerForFixture(m, fx, hg, ag) {
+    var apiHome = tlaToTeam(m.home), apiAway = tlaToTeam(m.away);
+    var raw = String(m.winner || '').toUpperCase();
+    var winner = '';
+    if (raw === 'HOME_TEAM' || raw === 'HOME') winner = apiHome;
+    else if (raw === 'AWAY_TEAM' || raw === 'AWAY') winner = apiAway;
+    else if (raw && raw !== 'DRAW') winner = tlaToTeam(raw) || m.winner;
+    if (winner === fx.home || winner === fx.away) return winner;
+    if (Number(hg) > Number(ag)) return fx.home;
+    if (Number(ag) > Number(hg)) return fx.away;
+    return '';
+}
+function normalizeOfficialMatches(matches, currentActual) {
     var groupScores = {};
+    var knockoutScores = {};
+    var knockoutWinners = {};
     var liveIds = [];
     (matches || []).forEach(function (m) {
         if (m.stage !== 'GROUP_STAGE' || m.hg == null || m.ag == null) return;
@@ -2465,7 +2498,25 @@ function normalizeOfficialMatches(matches) {
             liveIds.push({ id: fx.id, status: m.status });
         }
     });
-    return { groupScores: groupScores, liveIds: liveIds };
+    var workingActual = normalizeEntry(currentActual || {});
+    workingActual.groupScores = __assign(__assign({}, workingActual.groupScores), groupScores);
+    var koIndex = knockoutPairIndex(workingActual);
+    (matches || []).forEach(function (m) {
+        if (m.stage === 'GROUP_STAGE' || m.hg == null || m.ag == null) return;
+        var home = tlaToTeam(m.home), away = tlaToTeam(m.away);
+        if (!home || !away) return;
+        var fx = koIndex[[home, away].slice().sort().join('~')];
+        if (!fx) return;
+        var hg = m.hg, ag = m.ag;
+        if (fx.home !== home) { var t = hg; hg = ag; ag = t; }
+        knockoutScores[fx.id] = { homeGoals: hg, awayGoals: ag };
+        var winner = officialWinnerForFixture(m, fx, hg, ag);
+        if (winner) knockoutWinners[fx.id] = winner;
+        if ((m.status === 'live' || m.status === 'halftime') && withinLiveWindow(m.utcDate)) {
+            liveIds.push({ id: fx.id, status: m.status });
+        }
+    });
+    return { groupScores: groupScores, knockoutScores: knockoutScores, knockoutWinners: knockoutWinners, liveIds: liveIds };
 }
 var _officialPollTimer = null;
 app.liveFixtures = {};  // { fixtureId: 'live'|'halftime' }
@@ -2474,17 +2525,19 @@ function fetchOfficialResults() {
     if (_officialPollTimer) { clearTimeout(_officialPollTimer); _officialPollTimer = null; }
     fetch('/api/results').then(function (r) { return r.ok ? r.json() : null; }).then(function (res) {
         if (!res || !res.ok || !res.matches) return;
-        var normalized = normalizeOfficialMatches(res.matches);
+        var normalized = normalizeOfficialMatches(res.matches, (app.data && app.data.actual) || {});
         // Actualizar liveFixtures
         var newLive = {};
         (normalized.liveIds || []).forEach(function (l) { newLive[l.id] = l.status; });
         app.liveFixtures = newLive;
-        if (normalized.groupScores && Object.keys(normalized.groupScores).length) {
+        if ((normalized.groupScores && Object.keys(normalized.groupScores).length) || (normalized.knockoutScores && Object.keys(normalized.knockoutScores).length) || (normalized.knockoutWinners && Object.keys(normalized.knockoutWinners).length)) {
             var cur = normalizeEntry((app.data && app.data.actual) || {});
             cur.groupScores = __assign(__assign({}, cur.groupScores), normalized.groupScores);
+            cur.knockoutScores = __assign(__assign({}, cur.knockoutScores), normalized.knockoutScores);
+            cur.knockoutWinners = __assign(__assign({}, cur.knockoutWinners), normalized.knockoutWinners);
             app.data.actual = cur;
             app.adminActual = normalizeEntry(cur);
-            try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, updatedAt: res.updatedAt })); } catch (e) {}
+            try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, knockoutScores: cur.knockoutScores, knockoutWinners: cur.knockoutWinners, updatedAt: res.updatedAt })); } catch (e) {}
         }
         render();
         // Polling: si hay partidos en vivo, re-fetch cada 60s; si no, un poll extra en 3 min para limpiar pills colgadas
@@ -4344,7 +4397,14 @@ function resolveSlot(def, slot, tables, thirdQualified, used) {
 function buildR32(entry) { var tables = calculateTables(entry); var thirdQualified = tables.thirdRank.slice(0, 8); var used = new Set(); var matches = R32_SLOTS.map(function (slot) { var home = resolveSlot(slot.home, slot, tables, thirdQualified, used); var away = resolveSlot(slot.away, slot, tables, thirdQualified, used); var over = (entry.r32Overrides && entry.r32Overrides[slot.id]) || {}; return __assign(__assign({}, slot), { autoHome: home, autoAway: away, home: over.home || home, away: over.away || away }); }); return { matches: matches, tables: tables, thirdQualified: thirdQualified, thirdAllocationKey: thirdQualifiedKey(thirdQualified) }; }
 function qualifiedR32Teams(entry) { var tables = calculateTables(entry); var teams = []; GROUP_KEYS.forEach(function (g) { teams.push(tables.groups[g][0].team, tables.groups[g][1].team); }); tables.thirdRank.slice(0, 8).forEach(function (r) { return teams.push(r.team); }); return Array.from(new Set(teams)); }
 function isConcreteTeam(team) { return allTeams().includes(team); }
-function validWinner(entry, match) { var w = entry.knockoutWinners && entry.knockoutWinners[match.id]; return w && (w === match.home || w === match.away) ? w : ''; }
+function winnerFromKnockoutScore(entry, match) {
+    var s = (entry.knockoutScores || {})[match.id] || {};
+    if (!scoreHasValue(s) || !isConcreteTeam(match.home) || !isConcreteTeam(match.away)) return '';
+    var hg = Number(s.homeGoals), ag = Number(s.awayGoals);
+    if (hg === ag) return '';
+    return hg > ag ? match.home : match.away;
+}
+function validWinner(entry, match) { var w = entry.knockoutWinners && entry.knockoutWinners[match.id]; return w && (w === match.home || w === match.away) ? w : winnerFromKnockoutScore(entry, match); }
 function validLoser(entry, match) { var w = validWinner(entry, match); if (!w) return ''; return w === match.home ? match.away : match.home; }
 function koScoreComplete(entry, match) { var s = (entry.knockoutScores || {})[match.id] || {}; return scoreHasValue(s); }
 function koPredictionComplete(entry, match) { return !!validWinner(entry, match) && koScoreComplete(entry, match); }
