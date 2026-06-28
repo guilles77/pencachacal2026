@@ -1079,6 +1079,15 @@
     .allpred-row.is-me{border-color:var(--line2);background:rgba(255,102,155,.12)}
     .allpred-row strong{font-weight:800}
     .allpred-row span{font-weight:800;color:var(--pink2);white-space:nowrap}
+    .allpred-row.can-score{border-color:rgba(120,230,150,.5);background:rgba(120,230,150,.10)}
+    .allpred-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+    .allpred-cross{display:flex;align-items:center;gap:6px;font-weight:700;font-size:.8rem;color:var(--muted)}
+    .allpred-cross .pred-vs{color:var(--muted2);font-weight:600;margin:0 1px}
+    .allpred-right{display:flex;align-items:center;gap:8px;white-space:nowrap}
+    .allpred-badge{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:10px;white-space:nowrap}
+    .allpred-badge.good{background:rgba(120,230,150,.18);color:#7fe6a0}
+    .allpred-badge.warn{background:rgba(255,214,143,.16);color:#ffd68f}
+    .rank-ko-breakdown .ko-hit-list{display:flex;flex-wrap:wrap;gap:4px}
 
     /* ============ v26 · sacar el safe-area duplicado arriba (app instalada) ============ */
     .standalone-app.mobile-mode{padding-top:0!important}
@@ -2976,15 +2985,30 @@ function renderNextMatchAllPredictions(fixture) {
     var predictions = getSubmittedPredictionsForView();
     var players = getPlayersForView();
     var req = requester();
+    var isKo = fixture.type === 'ko';
+    var realTeams = [fixture.home, fixture.away];
     var rows = Object.keys(predictions).map(function (pid) {
         var det = scorePlayerDetail(normalizeEntry(predictions[pid]), actual);
         var row = detailRowForFixture(det, fixture);
-        return { pid: pid, name: playerNameById(players, pid), pred: fixturePredictionText(row), me: !!(req && pid === req.playerId) };
+        var crossHtml = '', canScore = false, oneTeam = false;
+        if (isKo && row && row.predictedMatch) {
+            var pm = row.predictedMatch;
+            var predTeams = [pm.home, pm.away].filter(isConcreteTeam);
+            var hit = predTeams.filter(function (t) { return realTeams.indexOf(t) !== -1; }).length;
+            canScore = hit === 2; oneTeam = hit === 1;
+            crossHtml = '<div class="allpred-cross">' + teamHtml(pm.home) + '<span class="pred-vs">vs</span>' + teamHtml(pm.away) + '</div>';
+        }
+        return { pid: pid, name: playerNameById(players, pid), pred: fixturePredictionText(row), crossHtml: crossHtml, canScore: canScore, oneTeam: oneTeam, me: !!(req && pid === req.playerId) };
     });
-    rows.sort(function (a, b) { return (b.me - a.me) || a.name.localeCompare(b.name); });
+    rows.sort(function (a, b) { return (b.me - a.me) || (b.canScore - a.canScore) || (b.oneTeam - a.oneTeam) || a.name.localeCompare(b.name); });
     if (!rows.length) return '';
-    var items = rows.map(function (it) { return '<div class="allpred-row' + (it.me ? ' is-me' : '') + '"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong><span>' + esc(it.pred) + '</span></div>'; }).join('');
-    return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p></div></div><div class="allpred-list">' + items + '</div></div>';
+    var items = rows.map(function (it) {
+        var cls = 'allpred-row' + (it.me ? ' is-me' : '') + (it.canScore ? ' can-score' : '');
+        var badge = it.canScore ? '<span class="allpred-badge good">puede sumar</span>' : (it.oneTeam ? '<span class="allpred-badge warn">1 equipo</span>' : '');
+        return '<div class="' + cls + '"><div class="allpred-main"><strong>' + esc(it.name) + (it.me ? ' (vos)' : '') + '</strong>' + it.crossHtml + '</div><div class="allpred-right"><span>' + esc(it.pred) + '</span>' + badge + '</div></div>';
+    }).join('');
+    var hint = isKo ? '<p class="muted tiny" style="margin:.25rem 0 0">Cada uno con el cruce que pronosticó. Resaltados los que acertaron el cruce y pueden sumar puntos en este partido.</p>' : '';
+    return '<div class="card" id="home-allpred"><div class="row space"><div><span class="pill">Todos</span><h3 style="margin:.2rem 0 0">Qué pronosticó cada uno</h3><p class="muted tiny" style="margin:.25rem 0 0">Partido seleccionado: ' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</p>' + hint + '</div></div><div class="allpred-list">' + items + '</div></div>';
 }
 function renderPartidosView(r) {
     var actual = normalizeEntry((app.data && app.data.actual) || {});
@@ -3113,6 +3137,18 @@ function renderRankingMatchRow(fixture, detail, showResult) {
         + '<div class="partidos-row-pred"><span>Pronóstico:</span><strong>' + esc(predText) + '</strong>' + ptsHtml + '</div>'
         + '</article>';
 }
+function renderRankKoBreakdown(detail) {
+    var koRows = (detail && detail.koRows) || [];
+    var rows = koRows.filter(function (r) { return (r.predicted && r.predicted.length) || (r.actual && r.actual.length); });
+    if (!rows.length) return '';
+    var total = detail.koTeamPoints || 0;
+    var body = rows.map(function (r) {
+        var hits = r.hits.length ? '<div class="ko-hit-list">' + r.hits.map(function (t) { return '<span class="pill good">' + teamHtml(t) + '</span>'; }).join('') + '</div>' : '<span class="muted tiny">Sin aciertos</span>';
+        return '<tr><td><strong>' + esc(r.label) + '</strong><div class="muted tiny">' + r.unit + ' pts/equipo</div></td><td>' + r.hits.length + '/' + r.predicted.length + '</td><td>' + hits + '</td><td><strong>' + r.points + '</strong></td></tr>';
+    }).join('');
+    return '<details class="rank-ko-breakdown" ' + detailAttrs('ranking', 'rank-ko', true) + ' style="margin-top:12px"><summary>Puntos por equipos que pasaron de ronda (' + total + ' pts)</summary>'
+        + '<div class="details-body"><div class="score-table-wrap"><table class="point-table"><thead><tr><th>Ronda</th><th>Aciertos</th><th>Equipos que pasaron</th><th>Pts</th></tr></thead><tbody>' + body + '</tbody></table></div></div></details>';
+}
 function renderRankingPlayerDetail(playerId, predictions, players, actual, leaderboard) {
     var name = playerNameById(players, playerId);
     var lbRow = (leaderboard || []).find(function (r) { return r.playerId === playerId; }) || {};
@@ -3128,6 +3164,7 @@ function renderRankingPlayerDetail(playerId, predictions, players, actual, leade
     return '<div class="card rank-detail-card" id="rank-detail" style="margin-top:16px">'
         + '<div class="row space"><div><span class="pill">Detalle por jugador</span><h2>' + esc(name) + '</h2></div><div class="partidos-total"><strong>' + (lbRow.total || 0) + '</strong><span>pts</span></div></div>'
         + selector
+        + renderRankKoBreakdown(detail)
         + '<details ' + detailAttrs('ranking', 'rank-previous', false) + ' style="margin-top:12px"><summary>Resultados previos y puntos (' + played.length + ')</summary><div class="details-body">' + playedHtml + '</div></details>'
         + '<details ' + detailAttrs('ranking', 'rank-upcoming', true) + ' style="margin-top:12px"><summary>Próximos pronósticos de ' + esc(name) + ' (' + pending.length + ')</summary><div class="details-body">' + pendingHtml + '</div></details>'
         + '</div>';
