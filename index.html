@@ -722,6 +722,17 @@
     .v20-matchday-person-row{padding:9px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
     .v20-matchday-points{font-weight:950;color:var(--text)}
     .v20-matchday-note,.v20-matchday-empty{margin-top:8px}
+    .ko-decision-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,214,143,.32);background:rgba(255,214,143,.10);color:var(--warn);border-radius:999px;padding:.26rem .55rem;font-size:.76rem;font-weight:900}
+    .ko-compare-box{margin-top:12px;border:1px solid rgba(255,245,248,.10);background:rgba(255,255,255,.035);border-radius:16px;padding:10px}
+    .ko-compare-grid,.situation-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .ko-compare-stat,.situation-stat{border:1px solid rgba(255,245,248,.09);background:rgba(0,0,0,.14);border-radius:14px;padding:9px}
+    .ko-compare-stat strong,.situation-stat strong{display:block;font-size:1.15rem}
+    .ko-compare-stat span,.situation-stat span,.cross-alert-row span{color:var(--muted);font-size:.78rem}
+    .cross-alert-list{display:grid;gap:8px;margin-top:10px}
+    .cross-alert-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid rgba(255,245,248,.09);background:rgba(255,255,255,.032);border-radius:14px;padding:9px}
+    .admin-manual-status{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,214,143,.24);background:rgba(255,214,143,.08)}
+    .ranking-share-preview{display:grid;gap:8px;margin-top:10px}
+    .ranking-share-preview div{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:12px;padding:8px 10px}
     .v20-home-ranking-table{width:100%;min-width:0!important}.v20-home-ranking-table td,.v20-home-ranking-table th{padding:.52rem .36rem}.v20-home-ranking-table .rank{font-weight:950;color:var(--pink2)}
     .v20-score-total{font-size:2.4rem;font-weight:1000;line-height:1;margin:.25rem 0;color:var(--ink)}
     .v20-mini-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -734,7 +745,7 @@
     .v20-ko-pending-note{border:1px solid rgba(255,214,143,.32);background:rgba(255,214,143,.09);border-radius:16px;padding:12px;margin-bottom:12px;color:var(--warn)}
     .v19-matchcenter{display:none!important}
     @media (max-width:1180px){.v20-home-layout{grid-template-columns:1fr}.v20-upcoming-grid{grid-template-columns:1fr 1fr}.v20-how-grid{grid-template-columns:1fr}}
-    @media (max-width:760px){.v20-upcoming-grid,.v20-mini-stat-grid{grid-template-columns:1fr}.prediction-view-tabs,.v20-result-tabs{grid-template-columns:1fr 1fr}.pro-match-line{grid-template-columns:minmax(0,1fr) 3.5rem .5rem 3.5rem minmax(0,1fr);gap:5px}.pro-team{font-size:.86rem}.v20-teams{grid-template-columns:1fr;gap:8px}.v20-team.away{justify-content:flex-start;text-align:left}.v20-score{width:100%;min-width:0}.leaderboard-table{font-size:.84rem}.leaderboard-table.is-expanded{min-width:920px!important}.score-table-wrap{overflow:auto}.pro-ko-score{grid-template-columns:1fr auto 1fr}.pro-ko-score label,.pro-ko-score label:last-child{grid-template-columns:1fr;gap:4px}.prediction-view-tabs button,.v20-result-tabs button{padding:.72rem .7rem}.v20-matchday-head,.v20-matchday-my-row,.v20-matchday-person-row{grid-template-columns:1fr}.v20-matchday-card,.v20-matchday-my{padding:12px}}
+    @media (max-width:760px){.v20-upcoming-grid,.v20-mini-stat-grid,.ko-compare-grid,.situation-grid{grid-template-columns:1fr}.cross-alert-row{grid-template-columns:1fr}.prediction-view-tabs,.v20-result-tabs{grid-template-columns:1fr 1fr}.pro-match-line{grid-template-columns:minmax(0,1fr) 3.5rem .5rem 3.5rem minmax(0,1fr);gap:5px}.pro-team{font-size:.86rem}.v20-teams{grid-template-columns:1fr;gap:8px}.v20-team.away{justify-content:flex-start;text-align:left}.v20-score{width:100%;min-width:0}.leaderboard-table{font-size:.84rem}.leaderboard-table.is-expanded{min-width:920px!important}.score-table-wrap{overflow:auto}.pro-ko-score{grid-template-columns:1fr auto 1fr}.pro-ko-score label,.pro-ko-score label:last-child{grid-template-columns:1fr;gap:4px}.prediction-view-tabs button,.v20-result-tabs button{padding:.72rem .7rem}.v20-matchday-head,.v20-matchday-my-row,.v20-matchday-person-row{grid-template-columns:1fr}.v20-matchday-card,.v20-matchday-my{padding:12px}}
 
 
     /* v20.5 My Prediction Cleanup: menos ruido, foco en cargar */
@@ -1964,7 +1975,7 @@ function homeScheduledFixtures(actual) {
                 var no = fixtureNoFromKoId(m.id);
                 var score = (actual.knockoutScores || {})[m.id] || {};
                 var liveStatus = (lf[m.id] && withinLiveWindow(kickoffDateForNo(no))) ? lf[m.id] : null;
-                fixtures.push({ type:'ko', id:m.id, matchNo:no, round:round, stage:ROUND_LABELS[round] || 'Mata-mata', home:m.home, away:m.away, date:scheduleDateForNo(no), done:!!validWinner(actual, m) && !liveStatus, score:score, winner:validWinner(actual, m), live:liveStatus });
+                fixtures.push({ type:'ko', id:m.id, matchNo:no, round:round, stage:ROUND_LABELS[round] || 'Mata-mata', home:m.home, away:m.away, date:scheduleDateForNo(no), done:!!validWinner(actual, m) && !liveStatus, score:score, winner:validWinner(actual, m), meta:(actual.matchMeta || {})[m.id] || {}, live:liveStatus });
             });
         });
     }
@@ -1980,10 +1991,29 @@ function nextHomeFixturePack(actual) {
     return { date:target, label:target === today ? 'Partidos de hoy' : 'Próxima fecha', matches:fixtures.filter(function (f) { return f.date === target; }) };
 }
 function fixtureScoreText(f) { return scoreHasValue(f.score || {}) ? Number(f.score.homeGoals) + ' - ' + Number(f.score.awayGoals) : 'vs'; }
+function koDecisionLabel(meta) {
+    var raw = String((meta && (meta.duration || meta.decision)) || '').toUpperCase();
+    if (raw === 'PENALTY_SHOOTOUT' || raw === 'PENALTIES' || raw === 'PENALES') return 'por penales';
+    if (raw === 'EXTRA_TIME' || raw === 'EXTRA' || raw === 'ALARGUE') return 'en alargue';
+    return '';
+}
+function koDecisionOptions(value) {
+    value = String(value || '').toUpperCase();
+    return '<option value="">Sin detalle</option>'
+        + '<option value="REGULAR" ' + (value === 'REGULAR' ? 'selected' : '') + '>Reglamentario</option>'
+        + '<option value="EXTRA_TIME" ' + (value === 'EXTRA_TIME' ? 'selected' : '') + '>En alargue</option>'
+        + '<option value="PENALTY_SHOOTOUT" ' + (value === 'PENALTY_SHOOTOUT' ? 'selected' : '') + '>Por penales</option>';
+}
+function koFixtureFooterText(f) {
+    if (f.type !== 'ko') return 'Grupo ' + esc(f.group || '');
+    var decision = koDecisionLabel(f.meta);
+    return f.winner ? ('Clasifica ' + esc(teamLabel(f.winner)) + (decision ? ' · ' + esc(decision) : '')) : 'Sin clasificado cargado';
+}
 function renderFixtureCard(f, compact) {
     var done = !!f.done;
     var time = scheduleTimeForNo(f.matchNo);
-    return '<article class="v20-match-card ' + (done ? 'is-done' : 'is-pending') + '"><div class="v20-match-meta"><span>' + esc(f.stage || '') + '</span><span>Partido ' + esc(f.matchNo || '') + '</span></div><div class="v20-teams"><div class="v20-team home">' + teamHtml(f.home) + '</div><div class="v20-score">' + esc(fixtureScoreText(f)) + '</div><div class="v20-team away">' + teamHtml(f.away) + '</div></div><div class="v20-match-footer"><span>' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</span><span class="pill ' + (done ? 'good' : 'warn') + '">' + (done ? 'Cargado' : 'Pendiente') + '</span></div></article>';
+    var decision = koDecisionLabel(f.meta);
+    return '<article class="v20-match-card ' + (done ? 'is-done' : 'is-pending') + '"><div class="v20-match-meta"><span>' + esc(f.stage || '') + '</span><span>Partido ' + esc(f.matchNo || '') + '</span></div><div class="v20-teams"><div class="v20-team home">' + teamHtml(f.home) + '</div><div class="v20-score">' + esc(fixtureScoreText(f)) + '</div><div class="v20-team away">' + teamHtml(f.away) + '</div></div><div class="v20-match-footer"><span>' + esc(formatDateKey(f.date)) + (time ? ' · ' + esc(time) : '') + '</span><span class="pill ' + (done ? 'good' : 'warn') + '">' + (done ? 'Cargado' : 'Pendiente') + '</span>' + (decision ? '<span class="ko-decision-pill">' + esc(decision) + '</span>' : '') + '</div></article>';
 }
 function renderHomeUpcomingCard(actual) {
     var pack = nextHomeFixturePack(actual);
@@ -2152,8 +2182,40 @@ var DEFAULT_CONFIG = {
     ACTIVITY_MAX_ITEMS: '12',
     POINT_RESULT_EXACT: '3', POINT_RESULT_OUTCOME: '1', POINT_GROUP_EXACT: '3', POINT_GROUP_OUTCOME: '1', POINT_R32: '1', POINT_R16: '2', POINT_QF: '4', POINT_SF: '6', POINT_THIRD_PLACE: '8', POINT_FINALIST: '10', POINT_CHAMPION: '20', POINT_AWARD: '5', OFFICIAL_RESULTS_SYNC_URL: '', OFFICIAL_RESULTS_API_KEY: '', OFFICIAL_SQUADS_SYNC_URL: '', OFFICIAL_SQUADS_API_KEY: '', OFFICIAL_SYNC_AUTO: 'FALSE', OFFICIAL_SYNC_MINUTES: '15'
 };
-function emptyEntry() { return { groupScores: {}, knockoutScores: {}, knockoutWinners: {}, r32Overrides: {}, awards: {} }; }
-function normalizeEntry(entry) { return { groupScores: __assign({}, ((entry && entry.groupScores) || {})), knockoutScores: __assign({}, ((entry && entry.knockoutScores) || {})), knockoutWinners: __assign({}, ((entry && entry.knockoutWinners) || {})), r32Overrides: __assign({}, ((entry && entry.r32Overrides) || {})), awards: __assign({}, ((entry && entry.awards) || {})) }; }
+function emptyEntry() { return { groupScores: {}, knockoutScores: {}, knockoutWinners: {}, r32Overrides: {}, awards: {}, matchMeta: {} }; }
+function normalizeEntry(entry) { return { groupScores: __assign({}, ((entry && entry.groupScores) || {})), knockoutScores: __assign({}, ((entry && entry.knockoutScores) || {})), knockoutWinners: __assign({}, ((entry && entry.knockoutWinners) || {})), r32Overrides: __assign({}, ((entry && entry.r32Overrides) || {})), awards: __assign({}, ((entry && entry.awards) || {})), matchMeta: __assign({}, ((entry && entry.matchMeta) || {})) }; }
+function mergeActualLayer(base, layer) {
+    var out = normalizeEntry(base || {});
+    layer = normalizeEntry(layer || {});
+    Object.keys(layer.groupScores || {}).forEach(function (id) { if (scoreHasValue(layer.groupScores[id])) out.groupScores[id] = layer.groupScores[id]; });
+    Object.keys(layer.knockoutScores || {}).forEach(function (id) { if (scoreHasValue(layer.knockoutScores[id])) out.knockoutScores[id] = layer.knockoutScores[id]; });
+    Object.keys(layer.knockoutWinners || {}).forEach(function (id) { if (layer.knockoutWinners[id]) out.knockoutWinners[id] = layer.knockoutWinners[id]; });
+    Object.keys(layer.r32Overrides || {}).forEach(function (id) {
+        var over = layer.r32Overrides[id] || {};
+        if (over.home || over.away) out.r32Overrides[id] = __assign({}, over);
+    });
+    Object.keys(layer.awards || {}).forEach(function (key) { if (layer.awards[key]) out.awards[key] = layer.awards[key]; });
+    Object.keys(layer.matchMeta || {}).forEach(function (id) {
+        var meta = layer.matchMeta[id] || {};
+        if (meta.duration || meta.decision || meta.note || meta.source) out.matchMeta[id] = __assign(__assign({}, out.matchMeta[id] || {}), meta);
+    });
+    return out;
+}
+function cachedActualLayer(key) {
+    try {
+        var raw = JSON.parse(localStorage.getItem(key) || 'null');
+        if (!raw) return emptyEntry();
+        return normalizeEntry(raw.actual || raw);
+    } catch (e) { return emptyEntry(); }
+}
+function staticActualBase() {
+    return normalizeEntry((LC_STATIC && LC_STATIC.actual) || {});
+}
+function applyActualLayers(base) {
+    var live = cachedActualLayer('chacales_live_actual');
+    var manual = cachedActualLayer('chacales_manual_actual');
+    return mergeActualLayer(mergeActualLayer(base || staticActualBase(), live), manual);
+}
 function esc(v) { return String(v == null ? '' : v).replace(/[&<>'"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]); }); }
 function flagEmoji(team) { return FLAGS[team] || ''; }
 function flagAbbr(team) {
@@ -2371,7 +2433,10 @@ function refresh() {
                 case 3:
                     app.data = LC_STATIC ? loadStaticData() : loadLocalDemo();
                     app.myDraft = normalizeEntry((app.data.requester && app.data.requester.draft) || {});
-                    if (LC_STATIC && !LC_SANDBOX) fetchOfficialResults();
+                    if (LC_STATIC && !LC_SANDBOX) {
+                        fetchOfficialResults();
+                        fetchManualOverrides(true);
+                    }
                     _b.label = 4;
                 case 4:
                     app.adminActual = normalizeEntry((app.adminState && app.adminState.actual) || (app.data && app.data.actual) || {});
@@ -2431,14 +2496,7 @@ function loadStaticData() {
         // En pruebas: arrancar de los resultados cargados a mano (si hay); si no, del actual base.
         try { var sb = JSON.parse(localStorage.getItem(SANDBOX_KEY) || 'null'); if (sb) sActual = normalizeEntry(sb); } catch (e) {}
     } else {
-        try {
-            var cachedActual = JSON.parse(localStorage.getItem('chacales_live_actual') || 'null');
-            if (cachedActual) {
-                if (cachedActual.groupScores) sActual.groupScores = __assign(__assign({}, sActual.groupScores), cachedActual.groupScores);
-                if (cachedActual.knockoutScores) sActual.knockoutScores = __assign(__assign({}, sActual.knockoutScores), cachedActual.knockoutScores);
-                if (cachedActual.knockoutWinners) sActual.knockoutWinners = __assign(__assign({}, sActual.knockoutWinners), cachedActual.knockoutWinners);
-            }
-        } catch (e) {}
+        sActual = applyActualLayers(sActual);
     }
     return { ok: true, appUrl: location.href.split('?')[0], config: __assign(__assign({}, DEFAULT_CONFIG), (LC_STATIC.config || {})), players: players, predictions: preds, actual: sActual, squads: {}, requester: requester, viewOnly: true };
 }
@@ -2504,6 +2562,7 @@ function normalizeOfficialMatches(matches, currentActual) {
     var groupScores = {};
     var knockoutScores = {};
     var knockoutWinners = {};
+    var matchMeta = {};
     var liveIds = [];
     (matches || []).forEach(function (m) {
         if (m.stage !== 'GROUP_STAGE' || m.hg == null || m.ag == null) return;
@@ -2533,11 +2592,12 @@ function normalizeOfficialMatches(matches, currentActual) {
         knockoutScores[fx.id] = { homeGoals: hg, awayGoals: ag };
         var winner = officialWinnerForFixture(m, fx, hg, ag);
         if (winner) knockoutWinners[fx.id] = winner;
+        matchMeta[fx.id] = { duration: m.duration || '', source: 'official' };
         if ((m.status === 'live' || m.status === 'halftime') && withinLiveWindow(m.utcDate)) {
             liveIds.push({ id: fx.id, status: m.status });
         }
     });
-    return { groupScores: groupScores, knockoutScores: knockoutScores, knockoutWinners: knockoutWinners, liveIds: liveIds };
+    return { groupScores: groupScores, knockoutScores: knockoutScores, knockoutWinners: knockoutWinners, matchMeta: matchMeta, liveIds: liveIds };
 }
 var _officialPollTimer = null;
 app.liveFixtures = {};  // { fixtureId: 'live'|'halftime' }
@@ -2551,16 +2611,19 @@ function fetchOfficialResults() {
         var newLive = {};
         (normalized.liveIds || []).forEach(function (l) { newLive[l.id] = l.status; });
         app.liveFixtures = newLive;
-        if ((normalized.groupScores && Object.keys(normalized.groupScores).length) || (normalized.knockoutScores && Object.keys(normalized.knockoutScores).length) || (normalized.knockoutWinners && Object.keys(normalized.knockoutWinners).length)) {
-            var cur = normalizeEntry((app.data && app.data.actual) || {});
-            cur.groupScores = __assign(__assign({}, cur.groupScores), normalized.groupScores);
-            cur.knockoutScores = __assign(__assign({}, cur.knockoutScores), normalized.knockoutScores);
-            cur.knockoutWinners = __assign(__assign({}, cur.knockoutWinners), normalized.knockoutWinners);
+        if ((normalized.groupScores && Object.keys(normalized.groupScores).length) || (normalized.knockoutScores && Object.keys(normalized.knockoutScores).length) || (normalized.knockoutWinners && Object.keys(normalized.knockoutWinners).length) || (normalized.matchMeta && Object.keys(normalized.matchMeta).length)) {
+            var liveLayer = normalizeEntry({});
+            liveLayer.groupScores = normalized.groupScores || {};
+            liveLayer.knockoutScores = normalized.knockoutScores || {};
+            liveLayer.knockoutWinners = normalized.knockoutWinners || {};
+            liveLayer.matchMeta = normalized.matchMeta || {};
+            try { localStorage.setItem('chacales_live_actual', JSON.stringify(__assign({ updatedAt: res.updatedAt }, liveLayer))); } catch (e) {}
+            var cur = applyActualLayers(staticActualBase());
             app.data.actual = cur;
             app.adminActual = normalizeEntry(cur);
-            try { localStorage.setItem('chacales_live_actual', JSON.stringify({ groupScores: cur.groupScores, knockoutScores: cur.knockoutScores, knockoutWinners: cur.knockoutWinners, updatedAt: res.updatedAt })); } catch (e) {}
         }
         render();
+        fetchManualOverrides(true);
         // Polling: si hay partidos en vivo, re-fetch cada 60s; si no, un poll extra en 3 min para limpiar pills colgadas
         if (_officialPollTimer) { clearTimeout(_officialPollTimer); _officialPollTimer = null; }
         if (res.hasLive) {
@@ -2580,6 +2643,51 @@ function fetchOfficialResults() {
             _officialPollTimer = setTimeout(fetchOfficialResults, 120000);
         }
     });
+}
+function applyManualResponse(res) {
+    if (!res || !res.ok) return false;
+    try {
+        localStorage.setItem('chacales_manual_actual', JSON.stringify({ actual: normalizeEntry(res.actual || {}), updatedAt: res.updatedAt || '', configured: !!res.configured }));
+    } catch (e) {}
+    if (app.data) {
+        var cur = applyActualLayers(staticActualBase());
+        app.data.actual = cur;
+        if (app.adminState) {
+            app.adminState.actual = cur;
+            app.adminState.manualResults = { configured: !!res.configured, updatedAt: res.updatedAt || '' };
+        }
+        app.adminActual = normalizeEntry(cur);
+    }
+    return true;
+}
+function fetchManualOverrides(silent) {
+    if (!LC_STATIC) return Promise.resolve(null);
+    return fetch('/api/manual-results').then(function (r) { return r.ok ? r.json() : null; }).then(function (res) {
+        if (applyManualResponse(res)) {
+            if (!silent) toast('Overrides manuales actualizados.');
+            render();
+        }
+        return res;
+    }).catch(function (err) {
+        if (!silent) toast((err && err.message) || 'No pude leer overrides manuales.', 'slow');
+        return null;
+    });
+}
+function manualAdminRequest(payload, method) {
+    payload = payload || {};
+    return fetch('/api/manual-results', {
+        method: method || 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Pin': app.adminPin || '' },
+        body: JSON.stringify(payload)
+    }).then(function (r) {
+        return r.json().then(function (res) {
+            if (!r.ok || !res || !res.ok) throw new Error((res && res.error) || ('HTTP ' + r.status));
+            return res;
+        });
+    });
+}
+function authManualAdmin() {
+    return manualAdminRequest({ action:'auth' }).then(function (res) { return res || { ok:true }; });
 }
 function renderPanelError(panelId, err) {
     var message = err && err.message ? err.message : String(err || 'Error desconocido');
@@ -2738,6 +2846,72 @@ function renderUpcomingStrip(myDetail, fixtures, selectedFixture) {
     }).join('');
     return '<div class="card glow"><div class="row space"><div><span class="pill warn">Se vienen</span><h3 style="margin:.2rem 0 0">Próximos partidos</h3></div><span class="muted tiny">deslizá →</span></div><div class="hstrip">' + cards + '</div></div>';
 }
+function matchPairKey(match) {
+    return [match && match.home, match && match.away].filter(isConcreteTeam).sort().join('~');
+}
+function buildKoCrossAlerts(pred, actual) {
+    pred = normalizeEntry(pred);
+    actual = normalizeEntry(actual);
+    if (!allGroupMatchesComplete(actual)) return { ready: false, rows: [] };
+    var predBracket = buildBracket(pred);
+    var actualBracket = buildBracket(actual);
+    var actualByPair = {};
+    var actualTeams = new Set();
+    KO_ROUNDS.forEach(function (round) {
+        (actualBracket.rounds[round] || []).forEach(function (m) {
+            if (isConcreteTeam(m.home)) actualTeams.add(m.home);
+            if (isConcreteTeam(m.away)) actualTeams.add(m.away);
+            var key = matchPairKey(m);
+            if (!key) return;
+            actualByPair[key] = actualByPair[key] || [];
+            actualByPair[key].push(__assign(__assign({}, m), { round: round }));
+        });
+    });
+    var rows = [];
+    KO_ROUNDS.forEach(function (round) {
+        (predBracket.rounds[round] || []).forEach(function (m) {
+            var key = matchPairKey(m);
+            if (!key) return;
+            var actualMatches = actualByPair[key] || [];
+            var sameRound = actualMatches.find(function (am) { return am.round === round; });
+            var status = sameRound ? 'same' : actualMatches.length ? 'other' : (actualTeams.has(m.home) && actualTeams.has(m.away) ? 'alive' : 'dead');
+            rows.push({ round: round, label: ROUND_LABELS[round] || round, match: m, status: status, actual: sameRound || actualMatches[0] || null });
+        });
+    });
+    return { ready: true, rows: rows };
+}
+function crossAlertStatusHtml(row) {
+    if (row.status === 'same') return '<span class="pill good">Se dio</span>';
+    if (row.status === 'other') return '<span class="pill warn">Otra fase</span>';
+    if (row.status === 'alive') return '<span class="pill">Vivo</span>';
+    return '<span class="pill bad">No se dio</span>';
+}
+function renderKoCrossAlertsCard(pred, actual) {
+    var info = buildKoCrossAlerts(pred, actual);
+    if (!info.ready) return '<div class="card"><span class="pill">Cruces</span><h2>Alertas de cruces</h2><p class="muted">Se activan cuando estén completas las tablas reales de grupos.</p></div>';
+    var important = info.rows.filter(function (r) { return r.status === 'dead' || r.status === 'other'; }).slice(0, 10);
+    var alive = info.rows.filter(function (r) { return r.status === 'same' || r.status === 'alive'; }).length;
+    var dead = info.rows.filter(function (r) { return r.status === 'dead'; }).length;
+    var other = info.rows.filter(function (r) { return r.status === 'other'; }).length;
+    var list = important.length ? '<div class="cross-alert-list">' + important.map(function (r) {
+        var actualTxt = r.actual ? ' · real: ' + (ROUND_LABELS[r.actual.round] || r.actual.id || '') : '';
+        return '<div class="cross-alert-row"><div><strong>' + esc(r.label) + ': ' + teamLabel(r.match.home) + ' vs ' + teamLabel(r.match.away) + '</strong><br><span>' + esc(r.status === 'other' ? 'El cruce aparece en otro lugar del cuadro' : 'Ese cruce ya no puede ocurrir según el cuadro real') + esc(actualTxt) + '</span></div>' + crossAlertStatusHtml(r) + '</div>';
+    }).join('') + '</div>' : '<p class="muted tiny">No hay alertas fuertes por ahora.</p>';
+    return '<div class="card"><div class="row space"><div><span class="pill warn">Cruces</span><h2>Alertas de cruces pronosticados</h2></div><span class="pill">' + alive + ' vivos</span></div><div class="situation-grid"><div class="situation-stat"><strong>' + dead + '</strong><span>no se dieron</span></div><div class="situation-stat"><strong>' + other + '</strong><span>en otra fase/orden</span></div><div class="situation-stat"><strong>' + alive + '</strong><span>vivos o dados</span></div><div class="situation-stat"><strong>' + info.rows.length + '</strong><span>cruces revisados</span></div></div>' + list + '</div>';
+}
+function renderMySituationCard(r, leaderboard, actual, detail) {
+    if (!r) return '';
+    var idx = leaderboard.findIndex(function (row) { return row.playerId === r.playerId; });
+    var mine = idx >= 0 ? leaderboard[idx] : null;
+    var above = idx > 0 ? leaderboard[idx - 1] : null;
+    var leader = leaderboard[0] || null;
+    var pendingRows = (detail.groupRows || []).concat(detail.koMatchRows || []).filter(function (row) {
+        return row.status === 'pending' && ((row.predScore && row.predScore !== '—') || row.predWinner);
+    });
+    var nextText = !mine ? 'Sin ranking visible' : !above ? 'Vas primero' : ((above.total - mine.total + 1) + ' pts para pasar a ' + above.name);
+    var leaderGap = mine && leader ? Math.max(0, leader.total - mine.total) : 0;
+    return '<div class="card glow"><div class="row space"><div><span class="pill good">Mi situación</span><h2>Qué necesitás ahora</h2></div><span class="pill">' + (mine ? mine.total : 0) + ' pts</span></div><div class="situation-grid"><div class="situation-stat"><strong>' + (idx >= 0 ? '#' + (idx + 1) : '—') + '</strong><span>posición</span></div><div class="situation-stat"><strong>' + (above && mine ? (above.total - mine.total + 1) : 0) + '</strong><span>pts para subir</span></div><div class="situation-stat"><strong>' + leaderGap + '</strong><span>pts al líder</span></div><div class="situation-stat"><strong>' + pendingRows.length + '</strong><span>pronósticos vivos</span></div></div><p class="muted tiny" style="margin-top:10px">' + esc(nextText) + '. Exactos: ' + detail.exact + ' · Ganador: ' + detail.outcome + ' · Fallos: ' + detail.miss + '.</p></div>';
+}
 function renderHome() {
     var el = document.getElementById('home');
     var data = app.data || {};
@@ -2765,6 +2939,8 @@ function renderHome() {
     if (app.error) html.push(renderErrorCard());
     html.push(renderUpcomingStrip(detail, hfixtures, selectedFixture));
     html.push(renderNextMatchAllPredictions(selectedFixture));
+    if (r) html.push(renderMySituationCard(r, leaderboard, actual, detail));
+    if (r) html.push(renderKoCrossAlertsCard(myEntry, actual));
     if (r) html.push(renderMyPredictionsSection(myEntry));
     html.push('<div class="card"><div class="mp-links"><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
     el.innerHTML = html.join('');
@@ -3297,12 +3473,23 @@ function renderAdminBody() {
     app.adminActual = app.adminActual || normalizeEntry(state.actual || {});
     var html = [];
     html.push(renderAdminDashboard(state));
+    html.push(renderAdminShareCard(state));
     html.push('<details ' + detailAttrs('admin', 'players', false) + '><summary>Jugadores, accesos y links</summary><div class="details-body"><p class="muted tiny">La clave temporal sirve para que un usuario entre desde otro dispositivo. Después puede guardar su propia clave desde “Mi pronóstico”.</p><div class="score-table-wrap"><table><thead><tr><th>Jugador</th><th>Mail</th><th>Estado</th><th>Acceso</th><th>Link personal</th><th>Acciones</th></tr></thead><tbody>' + players.map(function (p) { var access = p.hasPassword ? '<span class="pill good">Clave propia</span>' : '<span class="pill warn">Temporal: ' + esc(p.tempPassword || 'resetear') + '</span>'; return '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.email || '') + '</td><td>' + (p.submittedAt ? '<span class="pill good">Enviado</span>' : '<span class="pill warn">Borrador</span>') + '</td><td>' + access + '</td><td><div class="copy-box">' + esc(p.link || '') + '</div></td><td><button class="small ghost" data-copy="' + esc(p.link || '') + '">Copiar link</button> <button class="small" data-admin-reset="' + esc(p.playerId) + '">Reset acceso</button> <button class="small" data-admin-unlock="' + esc(p.playerId) + '">Desbloquear</button> <button class="small danger" data-admin-delete="' + esc(p.playerId) + '">Borrar</button></td></tr>'; }).join('') + '</tbody></table></div></div></details>');
-    html.push('<details ' + detailAttrs('admin', 'actual', false) + '><summary>Resultados reales</summary><div class="details-body"><div class="row" style="margin-bottom:12px"><button class="good" data-action="save-actual">Guardar resultados reales</button><button class="ghost" data-action="recalculate-ranking">Recalcular ranking</button><button class="ghost" data-action="download-actual-json">Descargar JSON resultados</button></div>' + renderEntryEditor(app.adminActual, 'actual', false) + '</div></details>');
+    html.push('<details ' + detailAttrs('admin', 'actual', false) + '><summary>Override manual de resultados</summary><div class="details-body"><div class="admin-manual-status"><strong>Modo protegido por PIN.</strong><br><span class="muted tiny">Estos resultados se guardan en Vercel y pisan la API oficial cuando football-data demora o trae mal el dato. En mata-mata cargá marcador de 90 minutos y el clasificado por separado.</span></div><div class="row" style="margin:12px 0"><button class="good" data-action="save-actual">Guardar override manual</button><button class="ghost" data-action="recalculate-ranking">Recalcular ranking</button><button class="ghost" data-action="download-actual-json">Descargar JSON resultados</button><button class="ghost danger" data-action="clear-manual-actual">Borrar overrides</button></div>' + renderEntryEditor(app.adminActual, 'actual', false) + '</div></details>');
     html.push('<details ' + detailAttrs('admin', 'settings', false) + '><summary>Configuración</summary><div class="details-body"><div class="settings-grid">' + settingInput('PREDICTION_DEADLINE', 'Fecha límite', config.PREDICTION_DEADLINE || '', 'datetime') + settingInput('REVEAL_PREDICTIONS', 'Mostrar pronósticos', config.REVEAL_PREDICTIONS || 'TRUE', 'select') + settingInput('OFFICIAL_RESULTS_URL', 'Link FIFA oficial', config.OFFICIAL_RESULTS_URL || DEFAULT_CONFIG.OFFICIAL_RESULTS_URL, 'text') + settingInput('ACTIVITY_MAX_ITEMS', 'Movimientos en Inicio', config.ACTIVITY_MAX_ITEMS || DEFAULT_CONFIG.ACTIVITY_MAX_ITEMS || '12', 'number') + settingInput('POINT_RESULT_EXACT', 'Pts resultado exacto', config.POINT_RESULT_EXACT || config.POINT_GROUP_EXACT || '3', 'number') + settingInput('POINT_RESULT_OUTCOME', 'Pts ganador correcto', config.POINT_RESULT_OUTCOME || config.POINT_GROUP_OUTCOME || '1', 'number') + settingInput('POINT_R32', 'Pts equipo en 16avos', config.POINT_R32 || '1', 'number') + settingInput('POINT_R16', 'Pts equipo en octavos', config.POINT_R16 || '2', 'number') + settingInput('POINT_QF', 'Pts equipo en cuartos', config.POINT_QF || '4', 'number') + settingInput('POINT_SF', 'Pts equipo en semis', config.POINT_SF || '6', 'number') + settingInput('POINT_THIRD_PLACE', 'Pts equipo en 3er/4to puesto', config.POINT_THIRD_PLACE || '8', 'number') + settingInput('POINT_FINALIST', 'Pts finalista', config.POINT_FINALIST || '10', 'number') + settingInput('POINT_CHAMPION', 'Pts campeón', config.POINT_CHAMPION || '20', 'number') + settingInput('POINT_AWARD', 'Pts premio', config.POINT_AWARD || '5', 'number') + '</div><div class="row" style="margin-top:12px"><button data-action="save-settings">Guardar configuración</button></div></div></details>');
     html.push(renderV19OfficialSyncAdmin(config, state));
     html.push('<details ' + detailAttrs('admin', 'squads', false) + '><summary>Planteles oficiales para dropdowns</summary><div class="details-body"><p class="muted">Pegá un JSON con formato <code>{"Argentina":[{"name":"Jugador 1","position":"Arquero"}]}</code> o cargá la hoja Squads. Para “Mejor arquero”, la app toma solo quienes tengan <strong>Arquero</strong> en la columna Position.</p><textarea id="squads-json" placeholder="{&quot;Argentina&quot;:[{&quot;name&quot;:&quot;Jugador 1&quot;,&quot;position&quot;:&quot;Arquero&quot;,&quot;number&quot;:1}]}"></textarea><div class="row" style="margin-top:12px"><button data-action="import-squads">Importar planteles</button></div><p class="muted tiny">Planteles cargados: ' + Object.values(state.squads || {}).reduce(function (a, b) { return a + b.length; }, 0) + ' jugadores.</p></div></details>');
     return html.join('');
+}
+function renderAdminShareCard(state) {
+    var players = getPlayersForView();
+    var predictions = getSubmittedPredictionsForView();
+    var actual = normalizeEntry((app.data && app.data.actual) || {});
+    var rows = getLeaderboard(predictions, players, actual).slice(0, 5);
+    var storage = state && state.manualResults;
+    var storageText = storage ? (storage.configured ? 'Storage manual configurado' : 'Falta configurar storage manual') : 'Estado manual no disponible';
+    var preview = rows.length ? '<div class="ranking-share-preview">' + rows.map(function (r, i) { return '<div><strong>#' + (i + 1) + ' ' + esc(r.name) + '</strong><span>' + r.total + ' pts</span></div>'; }).join('') + '</div>' : '<p class="muted tiny">Todavía no hay ranking para compartir.</p>';
+    return '<div class="card"><div class="row space"><div><span class="pill">Compartir</span><h2>Imagen del ranking</h2><p class="muted tiny">' + esc(storageText) + '</p></div><button class="good" data-action="download-ranking-image">Descargar PNG</button></div>' + preview + '</div>';
 }
 function renderAdminDashboard(state) {
     var players = state.players || [];
@@ -3442,6 +3629,16 @@ function renderMatchdayGroupedSection(title, pill, fixtures, predictions, player
     if (!fixtures.length) return '';
     return '<section class="v20-matchday-section"><div class="v20-matchday-section-head"><div><span class="pill ' + pill + '">' + esc(title) + '</span><h3>' + esc(title) + '</h3></div><span class="pill">' + fixtures.length + ' partidos</span></div><details class="v20-matchday-listing" ' + detailAttrs('results', sectionKey + '-all', !!openFirst) + '><summary>Ver ' + esc(title.toLowerCase()) + ' (' + fixtures.length + ')</summary><div class="details-body"><div class="v20-matchday-list">' + fixtures.slice().sort(compareScheduledMatchLike).map(function (fixture) { return renderResultsMatchdayCard(fixture, predictions, players, detailByPlayer, req, myDetail); }).join('') + '</div></div></details></section>';
 }
+function renderKoFixtureComparison(fixture, publicRows) {
+    if (!fixture || fixture.type !== 'ko') return '';
+    var total = publicRows.length;
+    var same = publicRows.filter(function (item) { return item.row && item.row.sameTeams; });
+    var exact = same.filter(function (item) { return item.row.status === 'exact'; });
+    var winner = same.filter(function (item) { return item.row.status === 'exact' || item.row.status === 'outcome'; });
+    var missed = total - same.length;
+    var names = same.slice(0, 8).map(function (item) { return esc(item.name); }).join(', ');
+    return '<div class="ko-compare-box"><div class="row space"><strong>Comparador del cruce</strong><span class="muted tiny">Por equipos, no por número de partido</span></div><div class="ko-compare-grid" style="margin-top:8px"><div class="ko-compare-stat"><strong>' + same.length + '/' + total + '</strong><span>tenían este cruce</span></div><div class="ko-compare-stat"><strong>' + winner.length + '</strong><span>acertaron clasificado</span></div><div class="ko-compare-stat"><strong>' + exact.length + '</strong><span>resultado exacto</span></div><div class="ko-compare-stat"><strong>' + missed + '</strong><span>no lo tenían</span></div></div>' + (names ? '<div class="muted tiny" style="margin-top:8px">Lo tenían: ' + names + (same.length > 8 ? '...' : '') + '</div>' : '') + '</div>';
+}
 function renderResultsMatchdayCard(fixture, predictions, players, detailByPlayer, req, myDetail) {
     var publicRows = Object.keys(predictions).map(function (playerId) {
         var row = detailRowForFixture(detailByPlayer[playerId], fixture);
@@ -3466,7 +3663,8 @@ function renderResultsMatchdayCard(fixture, predictions, players, detailByPlayer
     var othersHtml = otherRows.length ? '<details class="v20-matchday-listing" ' + detailAttrs('results', 'match-' + fixture.id, false) + '><summary>Ver pronósticos de los demás (' + otherRows.length + ')</summary><div class="details-body"><div class="v20-matchday-people">' + otherRows.map(function (item) {
         return '<div class="v20-matchday-person-row"><strong>' + esc(item.name) + '</strong><span>' + esc(fixturePredictionText(item.row)) + '</span><span class="v20-matchday-points">' + ((item.row && Number.isFinite(item.row.points)) ? item.row.points : 0) + ' pts · ' + matchScoreStatusLabel(item.row.status) + '</span></div>';
     }).join('') + '</div></div></details>' : '<div class="v20-matchday-empty muted tiny">Todavía no hay pronósticos públicos de otros usuarios para este partido.</div>';
-    return '<article class="v20-matchday-card"><div class="v20-matchday-head"><div><div class="v20-matchday-meta">' + esc(fixture.stage || '') + ' · Partido ' + esc(fixture.matchNo || '') + '</div><h3 style="margin:.25rem 0 0">' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</h3></div>' + statusPill + '</div><div class="v20-matchday-actual"><div class="v20-matchday-meta">Resultado real</div><div class="v20-teams"><div class="v20-team home">' + teamHtml(fixture.home) + '</div><div class="v20-score">' + esc(fixtureScoreText(fixture)) + '</div><div class="v20-team away">' + teamHtml(fixture.away) + '</div></div><div class="v20-match-footer"><span>' + esc(formatDateKey(fixture.date)) + (scheduleTimeForNo(fixture.matchNo) ? ' · ' + esc(scheduleTimeForNo(fixture.matchNo)) : '') + '</span><span>' + (fixture.type === 'ko' ? (fixture.winner ? 'Clasifica ' + esc(teamLabel(fixture.winner)) : 'Sin clasificado cargado') : 'Grupo ' + esc(fixture.group || '')) + '</span></div></div><div class="v20-matchday-counts"><span class="pill good">Exactos ' + counts.exact + '</span><span class="pill warn">Ganador ' + counts.outcome + '</span><span class="pill">Pendientes ' + counts.pending + '</span><span class="pill">Sin pronóstico ' + counts.noPred + '</span><span class="pill bad">Fallaron ' + counts.miss + '</span></div>' + myHtml + othersHtml + '</article>';
+    var koCompare = renderKoFixtureComparison(fixture, publicRows);
+    return '<article class="v20-matchday-card"><div class="v20-matchday-head"><div><div class="v20-matchday-meta">' + esc(fixture.stage || '') + ' · Partido ' + esc(fixture.matchNo || '') + '</div><h3 style="margin:.25rem 0 0">' + teamHtml(fixture.home) + ' vs ' + teamHtml(fixture.away) + '</h3></div>' + statusPill + '</div><div class="v20-matchday-actual"><div class="v20-matchday-meta">Resultado real</div><div class="v20-teams"><div class="v20-team home">' + teamHtml(fixture.home) + '</div><div class="v20-score">' + esc(fixtureScoreText(fixture)) + '</div><div class="v20-team away">' + teamHtml(fixture.away) + '</div></div><div class="v20-match-footer"><span>' + esc(formatDateKey(fixture.date)) + (scheduleTimeForNo(fixture.matchNo) ? ' · ' + esc(scheduleTimeForNo(fixture.matchNo)) : '') + '</span><span>' + koFixtureFooterText(fixture) + '</span></div></div>' + koCompare + '<div class="v20-matchday-counts"><span class="pill good">Exactos ' + counts.exact + '</span><span class="pill warn">Ganador ' + counts.outcome + '</span><span class="pill">Pendientes ' + counts.pending + '</span><span class="pill">Sin pronóstico ' + counts.noPred + '</span><span class="pill bad">Fallaron ' + counts.miss + '</span></div>' + myHtml + othersHtml + '</article>';
 }
 function renderResultsMatchdayView(actual) {
     actual = normalizeEntry(actual);
@@ -3557,7 +3755,10 @@ function renderMatchCard(entry, scope, match, round, lockedFlag) {
     var opts = '<option value="">Elegir ganador</option>';
     if (isConcreteTeam(match.home)) opts += '<option value="' + esc(match.home) + '" ' + (selected === match.home ? 'selected' : '') + '>' + esc(teamOptionLabel(match.home)) + '</option>';
     if (isConcreteTeam(match.away)) opts += '<option value="' + esc(match.away) + '" ' + (selected === match.away ? 'selected' : '') + '>' + esc(teamOptionLabel(match.away)) + '</option>';
-    return '<article class="match-card compact ko-card pro-ko-card" data-v16-match-id="' + esc(match.id) + '" data-v16-round="' + esc(round) + '"><div class="pro-ko-stage"><span>' + esc(ROUND_LABELS[round] || round) + '</span><span>Partido ' + esc(match.id.replace('K', '')) + '</span></div><div class="pro-ko-teams"><span class="' + homeClass + '">' + teamHtml(match.home) + '</span><span class="vs">vs</span><span class="' + awayClass + '">' + teamHtml(match.away) + '</span></div><div class="pro-ko-score"><label><span>' + teamShort(match.home) + '</span><input type="number" min="0" inputmode="numeric" data-scope="' + scope + '" data-ko-score="' + match.id + '" data-side="homeGoals" value="' + esc(homeGoals) + '" ' + (canEdit ? '' : 'disabled') + '></label><span class="dash">-</span><label><input type="number" min="0" inputmode="numeric" data-scope="' + scope + '" data-ko-score="' + match.id + '" data-side="awayGoals" value="' + esc(awayGoals) + '" ' + (canEdit ? '' : 'disabled') + '><span>' + teamShort(match.away) + '</span></label></div><select data-scope="' + scope + '" data-ko-match="' + match.id + '" ' + (canEdit ? '' : 'disabled') + '>' + opts + '</select><div class="muted tiny ko-help">Si el resultado queda empatado, igual elegí el ganador por penales.</div>' + (round === 'R32' ? renderR32Override(entry, scope, match, lockedFlag) : '') + '</article>';
+    var meta = (entry.matchMeta && entry.matchMeta[match.id]) || {};
+    var decisionLabel = koDecisionLabel(meta);
+    var decisionHtml = scope === 'actual' ? '<select data-scope="' + scope + '" data-ko-decision="' + match.id + '" ' + (canEdit ? '' : 'disabled') + '>' + koDecisionOptions(meta.duration || meta.decision || '') + '</select>' : (decisionLabel ? '<div class="ko-decision-pill">' + esc(decisionLabel) + '</div>' : '');
+    return '<article class="match-card compact ko-card pro-ko-card" data-v16-match-id="' + esc(match.id) + '" data-v16-round="' + esc(round) + '"><div class="pro-ko-stage"><span>' + esc(ROUND_LABELS[round] || round) + '</span><span>Partido ' + esc(match.id.replace('K', '')) + '</span></div><div class="pro-ko-teams"><span class="' + homeClass + '">' + teamHtml(match.home) + '</span><span class="vs">vs</span><span class="' + awayClass + '">' + teamHtml(match.away) + '</span></div><div class="pro-ko-score"><label><span>' + teamShort(match.home) + '</span><input type="number" min="0" inputmode="numeric" data-scope="' + scope + '" data-ko-score="' + match.id + '" data-side="homeGoals" value="' + esc(homeGoals) + '" ' + (canEdit ? '' : 'disabled') + '></label><span class="dash">-</span><label><input type="number" min="0" inputmode="numeric" data-scope="' + scope + '" data-ko-score="' + match.id + '" data-side="awayGoals" value="' + esc(awayGoals) + '" ' + (canEdit ? '' : 'disabled') + '><span>' + teamShort(match.away) + '</span></label></div><select data-scope="' + scope + '" data-ko-match="' + match.id + '" ' + (canEdit ? '' : 'disabled') + '>' + opts + '</select>' + decisionHtml + '<div class="muted tiny ko-help">El marcador es el de 90 minutos. Si clasifica por alargue o penales, marcá el detalle aparte.</div>' + (round === 'R32' ? renderR32Override(entry, scope, match, lockedFlag) : '') + '</article>';
 }
 function renderR32Override(entry, scope, match, lockedFlag) { var teams = qualifiedR32Teams(entry); var over = (entry.r32Overrides && entry.r32Overrides[match.id]) || {}; var options = function (auto, current) { return "<option value=\"\">Auto: ".concat(esc(teamOptionLabel(auto)), "</option>").concat(teams.map(function (t) { return "<option value=\"".concat(esc(t), "\" ").concat(current === t ? 'selected' : '', ">").concat(esc(teamOptionLabel(t)), "</option>"); }).join('')); }; return "<details class=\"mini-details\" ".concat(detailAttrs(scope, 'override-' + match.id, false), "><summary>Ajustar cruce</summary><div class=\"details-body\"><div class=\"grid two\"><select data-scope=\"").concat(scope, "\" data-r32-override=\"").concat(match.id, "\" data-side=\"home\" ").concat(lockedFlag ? 'disabled' : '', ">").concat(options(match.autoHome, over.home || ''), "</select><select data-scope=\"").concat(scope, "\" data-r32-override=\"").concat(match.id, "\" data-side=\"away\" ").concat(lockedFlag ? 'disabled' : '', ">").concat(options(match.autoAway, over.away || ''), "</select></div></div></details>"); }
 function renderAwards(entry, scope, lockedFlag) { var squads = (app.adminState && app.adminState.squads) || (app.data && app.data.squads) || {}; var hasSquads = Object.keys(squads).some(function (t) { return squads[t] && squads[t].length; }); var keeperCount = countAwardCandidates(squads, 'bestKeeper'); return "<div class=\"award-grid\">".concat(AWARD_FIELDS.map(function (_a) {
@@ -3834,6 +4035,14 @@ function updateFromControl(target) {
         app.dirty = true;
         renderSoft(scope);
     }
+    if (target.dataset.koDecision) {
+        entry.matchMeta = entry.matchMeta || {};
+        entry.matchMeta[target.dataset.koDecision] = entry.matchMeta[target.dataset.koDecision] || {};
+        entry.matchMeta[target.dataset.koDecision].duration = target.value;
+        entry.matchMeta[target.dataset.koDecision].source = 'manual';
+        app.dirty = true;
+        renderSoft(scope);
+    }
     if (target.dataset.r32Override) {
         var id = target.dataset.r32Override;
         entry.r32Overrides[id] = entry.r32Overrides[id] || {};
@@ -3866,6 +4075,10 @@ function runAction(action) {
                     return [2 /*return*/, saveActualAction()];
                 if (action === 'save-sandbox')
                     return [2 /*return*/, saveSandboxAction()];
+                if (action === 'clear-manual-actual')
+                    return [2 /*return*/, clearManualActualAction()];
+                if (action === 'download-ranking-image')
+                    return [2 /*return*/, downloadRankingImageAction()];
                 if (action === 'reset-sandbox')
                     return [2 /*return*/, resetSandboxAction()];
                 if (action === 'download-actual-json')
@@ -4064,78 +4277,104 @@ function submitPredictionAction() {
     });
 }
 function loadAdmin() {
-    return __awaiter(this, void 0, void 0, function () { var _a, err_6; return __generator(this, function (_b) {
-        switch (_b.label) {
-            case 0:
-                setLoading(true);
-                _b.label = 1;
-            case 1:
-                _b.trys.push([1, 5, 6, 7]);
-                if (!HAS_BACKEND) return [3 /*break*/, 3];
-                _a = app;
-                return [4 /*yield*/, serverCall('getAdminState', app.adminPin)];
-            case 2:
-                _a.adminState = _b.sent();
-                return [3 /*break*/, 4];
-            case 3:
-                app.adminState = { players: app.data.players, config: app.data.config, predictions: app.data.predictions, actual: app.data.actual, squads: app.data.squads };
-                _b.label = 4;
-            case 4:
-                app.adminActual = normalizeEntry(app.adminState.actual || {});
-                toast('Admin cargado.');
-                render();
-                return [3 /*break*/, 7];
-            case 5:
-                err_6 = _b.sent();
-                app.adminState = null;
-                toast(err_6.message, 'slow');
-                render();
-                return [3 /*break*/, 7];
-            case 6:
-                setLoading(false);
-                return [7 /*endfinally*/];
-            case 7: return [2 /*return*/];
-        }
-    }); });
+    setLoading(true);
+    var promise;
+    if (LC_STATIC && !HAS_BACKEND) {
+        promise = authManualAdmin().then(function (res) {
+            app.adminState = {
+                players: app.data.players,
+                config: app.data.config,
+                predictions: app.data.predictions,
+                actual: app.data.actual,
+                squads: app.data.squads,
+                manualResults: { configured: !!(res && res.configured) }
+            };
+        });
+    } else if (HAS_BACKEND) {
+        promise = serverCall('getAdminState', app.adminPin).then(function (state) { app.adminState = state; });
+    } else {
+        promise = Promise.resolve().then(function () {
+            app.adminState = { players: app.data.players, config: app.data.config, predictions: app.data.predictions, actual: app.data.actual, squads: app.data.squads };
+        });
+    }
+    return promise.then(function () {
+        app.adminActual = normalizeEntry(app.adminState.actual || {});
+        toast('Admin cargado.');
+        render();
+    }).catch(function (err) {
+        app.adminState = null;
+        sessionStorage.removeItem('chacales_admin_pin');
+        toast(err.message, 'slow');
+        render();
+    }).then(function () { setLoading(false); });
 }
 function saveActualAction() {
-    return __awaiter(this, void 0, void 0, function () { var err_7; return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                if (!app.adminState)
-                    return [2 /*return*/, toast('Ingresá como admin.')];
-                setLoading(true);
-                _a.label = 1;
-            case 1:
-                _a.trys.push([1, 7, 8, 9]);
-                if (!HAS_BACKEND) return [3 /*break*/, 5];
-                return [4 /*yield*/, serverCall('updateActual', app.adminPin, app.adminActual)];
-            case 2:
-                _a.sent();
-                return [4 /*yield*/, loadAdmin()];
-            case 3:
-                _a.sent();
-                return [4 /*yield*/, refresh()];
-            case 4:
-                _a.sent();
-                return [3 /*break*/, 6];
-            case 5:
-                app.data.actual = app.adminActual;
-                saveLocalDemo();
-                _a.label = 6;
-            case 6:
-                toast('Resultados reales guardados.');
-                return [3 /*break*/, 9];
-            case 7:
-                err_7 = _a.sent();
-                toast(err_7.message, 'slow');
-                return [3 /*break*/, 9];
-            case 8:
-                setLoading(false);
-                return [7 /*endfinally*/];
-            case 9: return [2 /*return*/];
-        }
-    }); });
+    if (!app.adminState) return toast('Ingresá como admin.');
+    setLoading(true);
+    var promise;
+    if (LC_STATIC && !HAS_BACKEND) {
+        promise = manualAdminRequest({ actual: app.adminActual }).then(function (res) {
+            applyManualResponse(res);
+            toast('Override manual guardado para todos.');
+            return fetchManualOverrides(true);
+        });
+    } else if (HAS_BACKEND) {
+        promise = serverCall('updateActual', app.adminPin, app.adminActual)
+            .then(function () { return loadAdmin(); })
+            .then(function () { return refresh(); })
+            .then(function () { toast('Resultados reales guardados.'); });
+    } else {
+        promise = Promise.resolve().then(function () {
+            app.data.actual = app.adminActual;
+            saveLocalDemo();
+            toast('Resultados reales guardados.');
+        });
+    }
+    return promise.catch(function (err) {
+        toast(err.message, 'slow');
+    }).then(function () { setLoading(false); });
+}
+function clearManualActualAction() {
+    if (!app.adminState) return toast('Ingresá como admin.');
+    if (!(LC_STATIC && !HAS_BACKEND)) return toast('Los overrides manuales se borran desde Vercel.');
+    if (!confirm('¿Borrar todos los overrides manuales guardados en Vercel? La API oficial y los datos base quedan intactos.')) return;
+    setLoading(true);
+    return manualAdminRequest({ action:'clear' }).then(function () {
+        try { localStorage.removeItem('chacales_manual_actual'); } catch (e) {}
+        app.data.actual = applyActualLayers(staticActualBase());
+        app.adminActual = normalizeEntry(app.data.actual);
+        toast('Overrides manuales borrados.');
+        render();
+    }).catch(function (err) {
+        toast(err.message, 'slow');
+    }).then(function () { setLoading(false); });
+}
+function downloadRankingImageAction() {
+    if (!app.adminState) return toast('Ingresá como admin.');
+    var players = getPlayersForView();
+    var predictions = getSubmittedPredictionsForView();
+    var actual = normalizeEntry((app.data && app.data.actual) || {});
+    var rows = getLeaderboard(predictions, players, actual).slice(0, 12);
+    if (!rows.length) return toast('No hay ranking para compartir.');
+    var canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1350;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#12070d'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    var grad = ctx.createLinearGradient(0, 0, 1080, 0); grad.addColorStop(0, '#ff669b'); grad.addColorStop(1, '#ffd68f');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 1080, 18);
+    ctx.fillStyle = '#fff5f8'; ctx.font = '900 58px Arial'; ctx.fillText('Penca Chacal 2026', 70, 105);
+    ctx.fillStyle = '#ffd68f'; ctx.font = '800 34px Arial'; ctx.fillText('Ranking general', 70, 155);
+    ctx.fillStyle = 'rgba(255,255,255,.72)'; ctx.font = '700 24px Arial'; ctx.fillText(new Date().toLocaleString('es-UY'), 70, 196);
+    rows.forEach(function (r, idx) {
+        var y = 270 + idx * 82;
+        ctx.fillStyle = idx < 3 ? 'rgba(255,102,155,.18)' : 'rgba(255,255,255,.07)';
+        ctx.fillRect(58, y - 48, 964, 64);
+        ctx.fillStyle = idx === 0 ? '#ffd68f' : '#ff669b'; ctx.font = '900 34px Arial'; ctx.fillText('#' + (idx + 1), 82, y - 8);
+        ctx.fillStyle = '#fff5f8'; ctx.font = '800 30px Arial'; ctx.fillText(String(r.name || '').slice(0, 30), 170, y - 8);
+        ctx.fillStyle = '#9effca'; ctx.font = '900 32px Arial'; ctx.textAlign = 'right'; ctx.fillText(r.total + ' pts', 980, y - 8); ctx.textAlign = 'left';
+    });
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '700 22px Arial'; ctx.fillText('Resultados oficiales + overrides manuales vigentes', 70, 1280);
+    canvas.toBlob(function (blob) { if (blob) downloadBlob('ranking-penca-chacal.png', blob); }, 'image/png');
 }
 function saveSettingsAction() {
     return __awaiter(this, void 0, void 0, function () { var settings, err_8; return __generator(this, function (_a) {
@@ -4344,7 +4583,8 @@ function adminDelete(playerId) {
         }
     }); });
 }
-function downloadJson(filename, data) { var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); setTimeout(function () { return URL.revokeObjectURL(a.href); }, 1000); }
+function downloadBlob(filename, blob) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); setTimeout(function () { return URL.revokeObjectURL(a.href); }, 1000); }
+function downloadJson(filename, data) { downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); }
 function calculateTables(entry) {
     entry = normalizeEntry(entry);
     var groups = {};
