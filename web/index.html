@@ -730,12 +730,10 @@
     .v20-matchday-note,.v20-matchday-empty{margin-top:8px}
     .ko-decision-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,214,143,.32);background:rgba(255,214,143,.10);color:var(--warn);border-radius:999px;padding:.26rem .55rem;font-size:.76rem;font-weight:900}
     .ko-compare-box{margin-top:12px;border:1px solid rgba(255,245,248,.10);background:rgba(255,255,255,.035);border-radius:16px;padding:10px}
-    .ko-compare-grid,.situation-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-    .ko-compare-stat,.situation-stat{border:1px solid rgba(255,245,248,.09);background:rgba(0,0,0,.14);border-radius:14px;padding:9px}
-    .ko-compare-stat strong,.situation-stat strong{display:block;font-size:1.15rem}
-    .ko-compare-stat span,.situation-stat span,.cross-alert-row span{color:var(--muted);font-size:.78rem}
-    .cross-alert-list{display:grid;gap:8px;margin-top:10px}
-    .cross-alert-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid rgba(255,245,248,.09);background:rgba(255,255,255,.032);border-radius:14px;padding:9px}
+    .ko-compare-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .ko-compare-stat{border:1px solid rgba(255,245,248,.09);background:rgba(0,0,0,.14);border-radius:14px;padding:9px}
+    .ko-compare-stat strong{display:block;font-size:1.15rem}
+    .ko-compare-stat span{color:var(--muted);font-size:.78rem}
     .admin-manual-status{margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,214,143,.24);background:rgba(255,214,143,.08)}
     .ranking-share-preview{display:grid;gap:8px;margin-top:10px}
     .ranking-share-preview div{display:flex;justify-content:space-between;gap:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:12px;padding:8px 10px}
@@ -751,7 +749,7 @@
     .v20-ko-pending-note{border:1px solid rgba(255,214,143,.32);background:rgba(255,214,143,.09);border-radius:16px;padding:12px;margin-bottom:12px;color:var(--warn)}
     .v19-matchcenter{display:none!important}
     @media (max-width:1180px){.v20-home-layout{grid-template-columns:1fr}.v20-upcoming-grid{grid-template-columns:1fr 1fr}.v20-how-grid{grid-template-columns:1fr}}
-    @media (max-width:760px){.v20-upcoming-grid,.v20-mini-stat-grid,.ko-compare-grid,.situation-grid{grid-template-columns:1fr}.cross-alert-row{grid-template-columns:1fr}.prediction-view-tabs,.v20-result-tabs{grid-template-columns:1fr 1fr}.pro-match-line{grid-template-columns:minmax(0,1fr) 3.5rem .5rem 3.5rem minmax(0,1fr);gap:5px}.pro-team{font-size:.86rem}.v20-teams{grid-template-columns:1fr;gap:8px}.v20-team.away{justify-content:flex-start;text-align:left}.v20-score{width:100%;min-width:0}.leaderboard-table{font-size:.84rem}.leaderboard-table.is-expanded{min-width:920px!important}.score-table-wrap{overflow:auto}.pro-ko-score{grid-template-columns:1fr auto 1fr}.pro-ko-score label,.pro-ko-score label:last-child{grid-template-columns:1fr;gap:4px}.prediction-view-tabs button,.v20-result-tabs button{padding:.72rem .7rem}.v20-matchday-head,.v20-matchday-my-row,.v20-matchday-person-row{grid-template-columns:1fr}.v20-matchday-card,.v20-matchday-my{padding:12px}}
+    @media (max-width:760px){.v20-upcoming-grid,.v20-mini-stat-grid,.ko-compare-grid{grid-template-columns:1fr}.prediction-view-tabs,.v20-result-tabs{grid-template-columns:1fr 1fr}.pro-match-line{grid-template-columns:minmax(0,1fr) 3.5rem .5rem 3.5rem minmax(0,1fr);gap:5px}.pro-team{font-size:.86rem}.v20-teams{grid-template-columns:1fr;gap:8px}.v20-team.away{justify-content:flex-start;text-align:left}.v20-score{width:100%;min-width:0}.leaderboard-table{font-size:.84rem}.leaderboard-table.is-expanded{min-width:920px!important}.score-table-wrap{overflow:auto}.pro-ko-score{grid-template-columns:1fr auto 1fr}.pro-ko-score label,.pro-ko-score label:last-child{grid-template-columns:1fr;gap:4px}.prediction-view-tabs button,.v20-result-tabs button{padding:.72rem .7rem}.v20-matchday-head,.v20-matchday-my-row,.v20-matchday-person-row{grid-template-columns:1fr}.v20-matchday-card,.v20-matchday-my{padding:12px}}
 
 
     /* v20.5 My Prediction Cleanup: menos ruido, foco en cargar */
@@ -1136,6 +1134,10 @@
     .pred-match-list{display:grid;gap:8px;margin-top:4px}
     .pred-match-row{padding:10px 12px;background:rgba(0,0,0,.22);border-radius:14px;border:1px solid var(--line);display:flex;flex-direction:column;gap:5px}
     .pred-match-teams{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.94rem;flex-wrap:wrap}
+    .pred-match-row.cross-hit{border-color:rgba(158,255,202,.58);background:linear-gradient(180deg,rgba(158,255,202,.13),rgba(0,0,0,.18));box-shadow:0 12px 34px rgba(78,210,135,.10)}
+    .pred-match-block{display:grid;gap:3px}
+    .pred-match-label{font-size:.66rem;font-weight:950;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
+    .pred-match-row.cross-hit .pred-match-block:first-child .pred-match-label{color:var(--good)}
     .pred-vs{color:var(--muted2);font-size:.76rem;flex-shrink:0}
     .pred-match-detail{display:flex;flex-wrap:wrap;align-items:center;gap:5px 10px;font-size:.83rem;color:var(--muted)}
     .pred-match-detail strong{color:var(--text)}
@@ -2945,8 +2947,6 @@ function renderHome() {
     if (app.error) html.push(renderErrorCard());
     html.push(renderUpcomingStrip(detail, hfixtures, selectedFixture));
     html.push(renderNextMatchAllPredictions(selectedFixture));
-    if (r) html.push(renderMySituationCard(r, leaderboard, actual, detail));
-    if (r) html.push(renderKoCrossAlertsCard(myEntry, actual));
     if (r) html.push(renderMyPredictionsSection(myEntry));
     html.push('<div class="card"><div class="mp-links"><button class="ghost" data-tab-jump="ranking">🏆 Ranking</button><button class="ghost" data-tab-jump="results">⚽ Resultados</button></div></div>');
     el.innerHTML = html.join('');
@@ -4979,8 +4979,13 @@ function renderGroupPredRows(rows) {
 function renderKoPredRows(rows) {
     return '<div class="pred-match-list">' + rows.map(function(r) {
         var statusHtml = r.status !== 'pending' ? '<span class="' + matchScoreStatusClass(r.status) + '">' + matchScoreStatusLabel(r.status) + '</span>' : '<span class="pill">Pendiente</span>';
-        return '<div class="pred-match-row">'
-            + '<div class="pred-match-teams">' + teamHtml(r.actualMatch.home) + '<span class="pred-vs">vs</span>' + teamHtml(r.actualMatch.away) + '</div>'
+        var predMatch = r.predictedMatch || null;
+        var predTeamsHtml = predMatch ? teamHtml(predMatch.home) + '<span class="pred-vs">vs</span>' + teamHtml(predMatch.away) : '<span style="color:var(--muted2)">Sin cruce pronosticado</span>';
+        var actualTeamsHtml = teamHtml(r.actualMatch.home) + '<span class="pred-vs">vs</span>' + teamHtml(r.actualMatch.away);
+        var rowClass = 'pred-match-row' + (r.sameTeams ? ' cross-hit' : '');
+        return '<div class="' + rowClass + '">'
+            + '<div class="pred-match-block"><span class="pred-match-label">Cruce pronosticado' + (r.sameTeams ? ' · acertado' : '') + '</span><div class="pred-match-teams">' + predTeamsHtml + '</div></div>'
+            + '<div class="pred-match-block"><span class="pred-match-label">Cruce real</span><div class="pred-match-teams">' + actualTeamsHtml + '</div></div>'
             + '<div class="pred-match-detail">'
             + (r.predScore !== '—' ? '<span>Tu resultado:</span><strong>' + esc(r.predScore) + '</strong>' : '')
             + '<span>Tu ganador:</span>' + (r.predWinner ? teamHtml(r.predWinner) : '<em style="color:var(--muted2);font-style:normal">Sin elegir</em>')
