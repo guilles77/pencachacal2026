@@ -2,10 +2,12 @@
   "version": 2,
   "builds": [
     { "src": "api/results.js", "use": "@vercel/node" },
+    { "src": "api/manual-results.js", "use": "@vercel/node" },
     { "src": "web/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/results", "dest": "/api/results.js" },
+    { "src": "/api/manual-results", "dest": "/api/manual-results.js" },
     { "src": "/sw.js", "headers": { "cache-control": "no-cache", "service-worker-allowed": "/" }, "dest": "/web/sw.js" },
     { "src": "/manifest.webmanifest", "headers": { "cache-control": "no-cache", "content-type": "application/manifest+json" }, "dest": "/web/manifest.webmanifest" },
     { "src": "/icons/(.*)", "headers": { "cache-control": "public, max-age=604800" }, "dest": "/web/icons/$1" },
