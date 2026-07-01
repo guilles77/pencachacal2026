@@ -45,6 +45,15 @@ function firstScore() {
   return null;
 }
 
+// Correcciones manuales a errores puntuales del feed oficial (football-data.org).
+// El feed reportó Bélgica-Senegal (16avos) como 3-2 en tiempo reglamentario, pero
+// el partido terminó 2-2 en los 90' y Bélgica avanzó en el alargue. Para la penca
+// importa el marcador de los 90' + el equipo que pasa, así que forzamos el 2-2/ET.
+// Clave: `${stage}|${homeTLA}|${awayTLA}`.
+const FEED_CORRECTIONS = {
+  'LAST_32|BEL|SEN': { hg: 2, ag: 2, duration: 'EXTRA_TIME' }
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
@@ -68,21 +77,33 @@ module.exports = async (req, res) => {
       .filter(m => m && INCLUDE_STATUSES.includes(m.status))
       .map(m => {
         const live = LIVE_STATUSES.includes(m.status);
-        const duration = m.score ? m.score.duration : null;
+        let duration = m.score ? m.score.duration : null;
         const rt = m.score && (m.score.regularTime || m.score.regulationTime || m.score.normalTime);
         const ft = m.score && m.score.fullTime;
         const ht = m.score && m.score.halfTime;
         const scoreSource = firstScore(rt, regularScoreFromGoals(m), regularScoreFromParts(m.score), duration === 'REGULAR' ? ft : null, ht);
+        const homeTla = m.homeTeam && m.homeTeam.tla;
+        const awayTla = m.awayTeam && m.awayTeam.tla;
+        let hg = scoreSource ? scoreSource.home : null;
+        let ag = scoreSource ? scoreSource.away : null;
+        let winner = m.score ? m.score.winner : null;
+        const corr = FEED_CORRECTIONS[m.stage + '|' + homeTla + '|' + awayTla];
+        if (corr) {
+          if (corr.hg != null) hg = corr.hg;
+          if (corr.ag != null) ag = corr.ag;
+          if (corr.duration) duration = corr.duration;
+          if (corr.winner) winner = corr.winner;
+        }
         return {
           stage: m.stage,
           group: m.group,
           utcDate: m.utcDate,
           duration,
-          home: m.homeTeam && m.homeTeam.tla,
-          away: m.awayTeam && m.awayTeam.tla,
-          hg: scoreSource ? scoreSource.home : null,
-          ag: scoreSource ? scoreSource.away : null,
-          winner: m.score ? m.score.winner : null,
+          home: homeTla,
+          away: awayTla,
+          hg: hg,
+          ag: ag,
+          winner: winner,
           status: live ? (m.status === 'PAUSED' ? 'halftime' : 'live') : 'finished'
         };
       });

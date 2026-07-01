@@ -4840,9 +4840,7 @@ function scorePlayer(pred, actual) {
                 var pw = validWinner(pred, pm);
                 if (scoreHasValue(as) && scoreHasValue(ps)) {
                     if (Number(ps.homeGoals) === Number(as.homeGoals) && Number(ps.awayGoals) === Number(as.awayGoals)) breakdown[key] += pts.exact;
-                    else if (pw && aw && pw === aw) breakdown[key] += pts.outcome;
-                } else if (pw && aw && pw === aw) {
-                    breakdown[key] += pts.outcome;
+                    else if (resultOutcome(ps) === resultOutcome(as)) breakdown[key] += pts.outcome;
                 }
             });
             var actualTeams = new Set(uniqueTeams(teamsInRound(actual, round)));
@@ -5094,7 +5092,7 @@ function buildKoMatchAuditRows(pred, actual) {
             if (aw && scoreHasValue(as)) {
                 if (!sameTeams || !pw) status = 'no-pred';
                 else if (scoreHasValue(ps) && Number(ps.homeGoals) === Number(as.homeGoals) && Number(ps.awayGoals) === Number(as.awayGoals)) { status = 'exact'; point = pts.exact; }
-                else if (pw === aw) { status = 'outcome'; point = pts.outcome; }
+                else if (scoreHasValue(ps) && resultOutcome(ps) === resultOutcome(as)) { status = 'outcome'; point = pts.outcome; }
                 else status = 'miss';
             }
             rows.push({ round: round, label: ROUND_LABELS[round], id: m.id, actualMatch: m, predictedMatch: pm, predScore: scoreText(ps), actualScore: scoreText(as), predWinner: pw, actualWinner: aw, status: status, points: point, sameTeams: sameTeams });
