@@ -1056,6 +1056,11 @@
     .lc-gate-players{display:grid;gap:10px;margin-top:16px}
     .lc-gate-player{appearance:none;text-align:left;border:1px solid rgba(255,102,155,.4);background:rgba(255,102,155,.08);color:var(--text);padding:.9rem 1rem;border-radius:14px;font-weight:800;font-size:1rem;cursor:pointer;transition:.15s ease}
     .lc-gate-player:hover{background:rgba(255,102,155,.2);transform:translateY(-1px)}
+    .lc-gate-admin{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+    .lc-gate-adminlink{appearance:none;width:100%;text-align:center;border:1px dashed rgba(255,255,255,.22);background:transparent;color:var(--muted);padding:.7rem 1rem;border-radius:12px;font-weight:700;font-size:.9rem;cursor:pointer}
+    .lc-gate-adminlink:hover{color:var(--text);border-color:rgba(255,255,255,.4)}
+    .lc-gate-adminform{display:grid;gap:8px;margin-top:10px}
+    .lc-gate-adminerr{color:#ff8a8a;font-size:.82rem;min-height:1em}
     .mi-puntaje-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
     .mp-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 6px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03);line-height:1.1}
     .mp-stat strong{font-size:1.5rem;color:var(--text)}
@@ -1171,6 +1176,7 @@
       <button class="tab-btn" data-tab="stats" data-short="Stats"><span class="tab-ico" aria-hidden="true">📊</span><span class="tab-txt">Estadísticas</span></button>
       <button class="tab-btn" data-tab="results" data-short="Resultados"><span class="tab-ico" aria-hidden="true">⚽</span><span class="tab-txt">Resultados reales</span></button>
       <button class="tab-btn" data-tab="rules" data-short="Reglas"><span class="tab-ico" aria-hidden="true">📖</span><span class="tab-txt">Reglas</span></button>
+      <button class="tab-btn admin-tab-hidden" data-tab="admin" data-short="Admin"><span class="tab-ico" aria-hidden="true">🔐</span><span class="tab-txt">Admin</span></button>
     </nav>
 
     <main>
@@ -1180,6 +1186,7 @@
       <section id="stats" class="tab-panel"></section>
       <section id="results" class="tab-panel"></section>
       <section id="rules" class="tab-panel"></section>
+      <section id="admin" class="tab-panel"></section>
     </main>
   </div>
   <div id="toast" class="toast"></div>
@@ -2513,7 +2520,7 @@ function renderUserGate() {
     var players = (LC_STATIC && LC_STATIC.players) || [];
     var sorted = players.slice().sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
     var btns = sorted.map(function (p) { return '<button type="button" class="lc-gate-player" data-pick-user="' + esc(p.playerId) + '">' + esc(p.name) + '</button>'; }).join('');
-    var inner = '<div class="lc-gate-card"><span class="pill">Penca Chacal</span><h2>¿Quién sos?</h2><p class="muted">Elegí tu usuario para ver la penca desde tu lugar. Podés cambiarlo cuando quieras.</p><div class="lc-gate-players">' + btns + '</div></div>';
+    var inner = '<div class="lc-gate-card"><span class="pill">Penca Chacal</span><h2>¿Quién sos?</h2><p class="muted">Elegí tu usuario para ver la penca desde tu lugar. Podés cambiarlo cuando quieras.</p><div class="lc-gate-players">' + btns + '</div><div class="lc-gate-admin"><button type="button" class="lc-gate-adminlink" data-gate-admin-toggle="1">🔐 Entrar como administrador</button><form id="lc-gate-admin-form" class="lc-gate-adminform" hidden><input id="lc-gate-admin-pin" type="password" placeholder="Clave de admin" autocomplete="off"><button type="submit" class="good">Entrar</button><div id="lc-gate-admin-err" class="lc-gate-adminerr"></div></form></div></div>';
     var existing = document.getElementById('lc-user-gate');
     if (existing) { existing.firstChild.innerHTML = inner; return; }
     var ov = document.createElement('div');
@@ -2526,6 +2533,30 @@ function renderUserGate() {
     document.body.appendChild(ov);
 }
 function removeUserGate() { var e = document.getElementById('lc-user-gate'); if (e) e.parentNode.removeChild(e); }
+function adminLoginFromGate() {
+    var input = document.getElementById('lc-gate-admin-pin');
+    var pin = (input ? input.value : '').trim();
+    var errBox = document.getElementById('lc-gate-admin-err');
+    if (errBox) errBox.textContent = '';
+    if (!pin) { if (errBox) errBox.textContent = 'Ingresá la clave.'; return; }
+    app.adminPin = pin;
+    setLoading(true);
+    authManualAdmin().then(function (res) {
+        sessionStorage.setItem('chacales_admin_pin', pin);
+        app.adminState = { players: app.data.players, config: app.data.config, predictions: app.data.predictions, actual: app.data.actual, squads: app.data.squads, manualResults: { configured: !!(res && res.configured) } };
+        app.adminActual = normalizeEntry(app.adminState.actual || {});
+        if (app.params) app.params.set('admin', '1');
+        app.activeTab = 'admin';
+        removeUserGate();
+        toast('Entraste como admin.');
+        render();
+    }).catch(function (err) {
+        app.adminPin = '';
+        sessionStorage.removeItem('chacales_admin_pin');
+        if (errBox) errBox.textContent = 'Clave incorrecta.';
+        else toast((err && err.message) || 'Clave incorrecta.', 'slow');
+    }).then(function () { setLoading(false); });
+}
 var OFFICIAL_TLA_OVERRIDES = { URY: 'Uruguay' };
 var _TLA_TEAM = null;
 function tlaToTeam(tla) {
@@ -2711,7 +2742,7 @@ function renderSafePanel(panelId, renderer) {
     }
 }
 function render() {
-    if (LC_STATIC && !requester()) { renderUserGate(); return; }
+    if (LC_STATIC && !requester() && !app.adminState) { renderUserGate(); return; }
     if (LC_STATIC) removeUserGate();
     renderTopButtons();
     updateNavVisibility();
@@ -2723,6 +2754,7 @@ function render() {
     renderSafePanel('stats', renderStats);
     renderSafePanel('results', renderResults);
     renderSafePanel('rules', renderRules);
+    renderSafePanel('admin', renderAdmin);
     restoreDetailsState();
     updateV16StickyBodyClass();
 }
@@ -3799,6 +3831,8 @@ function handleClick(event) {
     if (event.target.closest('#menu-toggle')) { toggleMenu(); return; }
     var pickUser = event.target.closest('[data-pick-user]');
     if (pickUser) { try { localStorage.setItem('chacales_player_id', pickUser.dataset.pickUser); } catch (e) {} app.uiState.rankingPlayer = ''; app.activeTab = 'home'; removeUserGate(); refresh(); return; }
+    var gateAdminToggle = event.target.closest('[data-gate-admin-toggle]');
+    if (gateAdminToggle) { var gf = document.getElementById('lc-gate-admin-form'); if (gf) { gf.hidden = false; var gp = document.getElementById('lc-gate-admin-pin'); if (gp) gp.focus(); } gateAdminToggle.style.display = 'none'; return; }
     var changeUser = event.target.closest('[data-action="change-user"]');
     if (changeUser && LC_STATIC) { try { localStorage.removeItem('chacales_player_id'); } catch (e) {} app.data.requester = null; renderUserGate(); return; }
     var tab = event.target.closest('[data-tab]');
@@ -3943,6 +3977,7 @@ function selectHomeFixture(el) {
 function handleSubmit(event) {
     event.preventDefault();
     var id = event.target.id;
+    if (id === 'lc-gate-admin-form') { adminLoginFromGate(); return; }
     if (id === 'login-form') {
         var identifier = document.getElementById('login-identifier').value.trim();
         var password = document.getElementById('login-password').value.trim();
